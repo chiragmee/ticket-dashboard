@@ -35,6 +35,39 @@ Reply with just the category word (bug/feature/query/other), nothing else.`,
   }
 }
 
+export async function classifyPriority(subject: string, description: string): Promise<string> {
+  const validPriorities = ['urgent', 'high', 'normal', 'low']
+
+  try {
+    const message = await client.messages.create({
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: 10,
+      messages: [
+        {
+          role: 'user',
+          content: `Classify the urgency of this support ticket.
+
+Priorities:
+- urgent: system down, complete outage, data loss, can't login, payments failing, production broken — immediate action needed
+- high: major feature broken, significant business impact, affects multiple users, error blocking key workflow
+- normal: single user issue, partial functionality broken, general bugs with a workaround available
+- low: cosmetic issue, minor inconvenience, feature request, general question, how-to query
+
+Ticket subject: ${subject}
+Ticket description: ${description?.slice(0, 500) ?? ''}
+
+Reply with just the priority word (urgent/high/normal/low), nothing else.`,
+        },
+      ],
+    })
+
+    const result = (message.content[0] as { text: string }).text.trim().toLowerCase()
+    return validPriorities.includes(result) ? result : 'normal'
+  } catch {
+    return 'normal'
+  }
+}
+
 export async function classifyDomain(subject: string, description: string): Promise<string> {
   const validDomains = ['krt', 'brigade', 'acb', 'other']
 

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { mapZendeskTicket } from '@/lib/zendesk/utils'
-import { classifyCategory, classifyDomain } from '@/lib/ai/classify'
+import { mapZendeskTicket, computeSlaBreachAt } from '@/lib/zendesk/utils'
+import { classifyCategory, classifyDomain, classifyPriority } from '@/lib/ai/classify'
 import { sendAcknowledgment, sendResolutionEmail } from '@/lib/email'
 
 export async function POST(req: NextRequest) {
@@ -17,27 +17,29 @@ export async function POST(req: NextRequest) {
   const raw = (payload.ticket ?? payload) as Record<string, unknown>
 
   // Load SLA config from DB (fall back to defaults silently)
-  const supabaseAdmin = createAdminClient()
+  const supabase = createAdminClient()
   let slaConfig: Record<string, number> = {}
   try {
-    const { data: slaRows } = await supabaseAdmin.from('sla_config').select('priority, hours')
+    const { data: slaRows } = await supabase.from('sla_config').select('priority, hours')
     slaConfig = Object.fromEntries((slaRows ?? []).map((r: { priority: string; hours: number }) => [r.priority, r.hours]))
   } catch { /* use defaults */ }
 
   const ticket = mapZendeskTicket(raw, slaConfig)
 
-  // AI classification — runs in parallel for speed
-  const [aiCategory, aiDomain] = await Promise.all([
+  // AI classification — all three run in parallel for speed
+  const [aiCategory, aiDomain, aiPriority] = await Promise.all([
     classifyCategory(ticket.subject, ticket.description),
     ticket.domain === 'other'
       ? classifyDomain(ticket.subject, ticket.description)
       : Promise.resolve(ticket.domain),
+    classifyPriority(ticket.subject, ticket.description),
   ])
 
   ticket.category = aiCategory
   ticket.domain = aiDomain
-
-  const supabase = supabaseAdmin
+  ticket.priority = aiPriority
+  // Recompute SLA breach time using the AI-classified priority
+  ticket.sla_breach_at = computeSlaBreachAt(aiPriority, ticket.zendesk_created_at, slaConfig)
 
   // Check if ticket already exists to detect new vs update
   const { data: existing } = await supabase
