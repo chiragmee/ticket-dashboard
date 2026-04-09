@@ -5,24 +5,18 @@ export function deriveCategory(tags: string[]): string {
   return 'query'
 }
 
-export function mapZendeskTicket(raw: {
-  id: number
-  subject: string
-  description?: string
-  status: string
-  priority?: string
-  tags?: string[]
-  requester?: { email?: string; name?: string }
-  requester_id?: number
-  organization_id?: number
-  assignee?: { name?: string }
-  via?: unknown
-  created_at: string
-  updated_at: string
-  due_at?: string
-  [key: string]: unknown
-}) {
-  const tags: string[] = raw.tags ?? []
+export function mapZendeskTicket(raw: Record<string, unknown>) {
+  // Support both Zendesk API format and Trigger webhook format
+  const id = Number(raw.id)
+  const subject = (raw.subject ?? raw.title ?? '(no subject)') as string
+
+  // Tags can be an array (API) or comma-separated string (trigger)
+  let tags: string[] = []
+  if (Array.isArray(raw.tags)) {
+    tags = raw.tags as string[]
+  } else if (typeof raw.tags === 'string' && raw.tags) {
+    tags = raw.tags.split(',').map((t) => t.trim()).filter(Boolean)
+  }
 
   const statusMap: Record<string, string> = {
     new: 'open',
@@ -33,21 +27,35 @@ export function mapZendeskTicket(raw: {
     closed: 'closed',
   }
 
+  const status = statusMap[(raw.status as string)?.toLowerCase()] ?? 'open'
+  const priority = (raw.priority as string)?.toLowerCase() ?? 'normal'
+
+  // requester can be an object (API) or flat strings (trigger)
+  const requester = raw.requester as Record<string, string> | undefined
+  const requesterEmail = requester?.email ?? (raw.requester_email as string) ?? ''
+  const requesterName = requester?.name ?? (raw.requester_name as string) ?? ''
+
+  const assignee = raw.assignee as Record<string, string> | undefined
+  const assigneeName = assignee?.name ?? (raw.assignee_name as string) ?? ''
+
+  const createdAt = (raw.created_at ?? raw.zendesk_created_at ?? new Date().toISOString()) as string
+  const updatedAt = (raw.updated_at ?? raw.zendesk_updated_at ?? new Date().toISOString()) as string
+
   return {
-    zendesk_id: raw.id,
-    subject: raw.subject ?? '(no subject)',
-    description: raw.description ?? '',
-    status: statusMap[raw.status] ?? 'open',
-    priority: raw.priority ?? 'normal',
+    zendesk_id: id,
+    subject,
+    description: (raw.description ?? '') as string,
+    status,
+    priority: ['low', 'normal', 'high', 'urgent'].includes(priority) ? priority : 'normal',
     category: deriveCategory(tags),
-    requester_email: (raw.requester as { email?: string } | undefined)?.email ?? '',
-    requester_name: (raw.requester as { name?: string } | undefined)?.name ?? '',
+    requester_email: requesterEmail,
+    requester_name: requesterName,
     requester_org: '',
-    assignee_name: (raw.assignee as { name?: string } | undefined)?.name ?? '',
-    tags: tags,
-    sla_breach_at: raw.due_at ?? null,
-    zendesk_created_at: raw.created_at,
-    zendesk_updated_at: raw.updated_at,
+    assignee_name: assigneeName,
+    tags,
+    sla_breach_at: (raw.due_at ?? null) as string | null,
+    zendesk_created_at: createdAt,
+    zendesk_updated_at: updatedAt,
     synced_at: new Date().toISOString(),
   }
 }
