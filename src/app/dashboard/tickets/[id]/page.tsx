@@ -47,10 +47,10 @@ const DOMAIN_LABELS: Record<string, string> = {
   krt: 'KRT', brigade: 'Brigade', acb: 'ACB', other: 'Other',
 }
 
-function Avatar({ name, size = 8 }: { name: string; size?: number }) {
-  const initials = (name || '?').split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2)
+function Avatar({ name }: { name: string }) {
+  const initials = (name || '?').split(' ').map((w: string) => w[0]).join('').toUpperCase().slice(0, 2)
   return (
-    <div className={`w-${size} h-${size} rounded-full bg-[#3B6EF0] flex items-center justify-center flex-shrink-0`}>
+    <div className="w-8 h-8 rounded-full bg-[#3B6EF0] flex items-center justify-center flex-shrink-0">
       <span className="text-white text-xs font-semibold">{initials}</span>
     </div>
   )
@@ -279,20 +279,20 @@ export default function TicketDetailPage() {
         <div className="flex-1 flex flex-col overflow-hidden">
 
           {/* Conversation thread (scrollable) */}
-          <div className="flex-1 overflow-y-auto p-5 space-y-3">
+          <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
             {threadComments.length === 0 && (
               <div className="text-center text-sm text-[#9BAABB] py-8">
                 No replies yet. Be the first to respond.
               </div>
             )}
 
-            {threadComments.map((c, i) => {
+            {threadComments.map((c) => {
               const isCustomer = c.via?.channel === 'web' || c.via?.channel === 'email'
               return (
-                <div key={c.id} className={`flex gap-3 ${isCustomer ? '' : 'flex-row-reverse'}`}>
-                  <Avatar name={isCustomer ? (ticket.requester_name || 'Customer') : (ticket.assignee_name || 'Agent')} />
-                  <div className={`max-w-[75%] ${isCustomer ? '' : 'items-end'} flex flex-col gap-1`}>
-                    <div className="flex items-center gap-2">
+                <div key={c.id} className={`flex gap-3 ${isCustomer ? 'justify-start' : 'justify-end'}`}>
+                  {isCustomer && <Avatar name={ticket.requester_name || 'Customer'} />}
+                  <div className="max-w-[70%] flex flex-col gap-1">
+                    <div className={`flex items-center gap-2 ${isCustomer ? '' : 'justify-end'}`}>
                       <span className="text-xs font-medium text-[#1E2A3B]">
                         {isCustomer ? (ticket.requester_name || 'Customer') : (ticket.assignee_name || 'Agent')}
                       </span>
@@ -301,7 +301,7 @@ export default function TicketDetailPage() {
                       )}
                       <span className="text-xs text-[#9BAABB]">{timeAgo(c.created_at)}</span>
                     </div>
-                    <div className={`rounded-2xl px-4 py-3 text-sm leading-relaxed whitespace-pre-wrap ${
+                    <div className={`rounded-2xl px-4 py-3 text-sm leading-relaxed whitespace-pre-wrap break-words ${
                       !c.public
                         ? 'bg-amber-50 border border-amber-200 text-amber-900'
                         : isCustomer
@@ -311,6 +311,7 @@ export default function TicketDetailPage() {
                       {c.body}
                     </div>
                   </div>
+                  {!isCustomer && <Avatar name={ticket.assignee_name || 'Agent'} />}
                 </div>
               )
             })}
