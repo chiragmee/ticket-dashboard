@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 
@@ -9,7 +9,12 @@ export default function SetPasswordPage() {
   const [confirm, setConfirm] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+  const [isReset, setIsReset] = useState(false)
   const router = useRouter()
+
+  useEffect(() => {
+    if (window.location.hash.includes('type=recovery')) setIsReset(true)
+  }, [])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -45,8 +50,8 @@ export default function SetPasswordPage() {
           <div className="w-10 h-10 bg-[#3B6EF0] rounded-xl flex items-center justify-center mb-4">
             <span className="text-white font-bold text-sm">TV</span>
           </div>
-          <h1 className="text-xl font-bold text-[#1E2A3B]">Set your password</h1>
-          <p className="text-sm text-[#6B7A99] mt-1">Choose a password to activate your account</p>
+          <h1 className="text-xl font-bold text-[#1E2A3B]">{isReset ? 'Set a new password' : 'Set your password'}</h1>
+          <p className="text-sm text-[#6B7A99] mt-1">{isReset ? 'Choose a new password for your account' : 'Choose a password to activate your account'}</p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
