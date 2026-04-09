@@ -31,6 +31,8 @@ type Summary = {
   resolved: number
   overdue: number
   by_category: Record<string, number>
+  avg_csat: number | null
+  csat_count: number
 }
 
 type RealtimeEvent = {
@@ -340,6 +342,27 @@ export default function TicketDashboard({
               />
             ))}
           </div>
+
+          {/* CSAT Score card */}
+          {summary.avg_csat !== null && summary.avg_csat !== undefined && (
+            <div className="bg-white rounded-xl border border-[#E5E9F2] p-4 flex items-center gap-5">
+              <div className="text-4xl">
+                {summary.avg_csat >= 4.5 ? '😄' : summary.avg_csat >= 3.5 ? '😊' : summary.avg_csat >= 2.5 ? '😐' : summary.avg_csat >= 1.5 ? '😕' : '😞'}
+              </div>
+              <div>
+                <div className="flex items-baseline gap-2">
+                  <span className="text-2xl font-bold text-[#1E2A3B]">{summary.avg_csat.toFixed(1)}</span>
+                  <span className="text-sm text-[#6B7A99]">/ 5</span>
+                </div>
+                <div className="text-sm text-[#6B7A99]">Avg CSAT · {summary.csat_count} {summary.csat_count === 1 ? 'response' : 'responses'}</div>
+              </div>
+              <div className="ml-auto flex gap-1">
+                {[1, 2, 3, 4, 5].map((star) => (
+                  <span key={star} className={`text-lg ${star <= Math.round(summary.avg_csat!) ? 'text-yellow-400' : 'text-[#E5E9F2]'}`}>★</span>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* Charts */}
           <div className="grid grid-cols-2 gap-4">

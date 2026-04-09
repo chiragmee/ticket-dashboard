@@ -6,7 +6,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 async function getInitialData() {
   const supabase = createAdminClient()
 
-  const [ticketsResult, totalResult, openResult, inProgressResult, resolvedResult, overdueResult, allCats] =
+  const [ticketsResult, totalResult, openResult, inProgressResult, resolvedResult, overdueResult, allCats, csatData] =
     await Promise.all([
       supabase.from('tickets').select('*').order('zendesk_updated_at', { ascending: false }).range(0, 19),
       supabase.from('tickets').select('*', { count: 'exact', head: true }),
@@ -17,6 +17,7 @@ async function getInitialData() {
         .lt('sla_breach_at', new Date().toISOString())
         .not('status', 'in', '("resolved","closed")'),
       supabase.from('tickets').select('category'),
+      supabase.from('ticket_csat').select('score'),
     ])
 
   const byCategory: Record<string, number> = { bug: 0, feature: 0, query: 0, other: 0 }
@@ -27,6 +28,10 @@ async function getInitialData() {
   }
 
   const count = totalResult.count ?? 0
+  const csatScores = csatData.data ?? []
+  const avg_csat = csatScores.length
+    ? Math.round((csatScores.reduce((sum: number, r: { score: number }) => sum + r.score, 0) / csatScores.length) * 10) / 10
+    : null
 
   return {
     tickets: { data: ticketsResult.data ?? [], count, totalPages: Math.ceil(count / 20) },
@@ -37,6 +42,8 @@ async function getInitialData() {
       resolved: resolvedResult.count ?? 0,
       overdue: overdueResult.count ?? 0,
       by_category: byCategory,
+      avg_csat,
+      csat_count: csatScores.length,
     },
   }
 }

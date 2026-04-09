@@ -73,6 +73,7 @@ export default function TicketDetailPage() {
   const [ticket, setTicket] = useState<Ticket | null>(null)
   const [comments, setComments] = useState<Comment[]>([])
   const [role, setRole] = useState<string>('')
+  const [csat, setCsat] = useState<{ score: number; submitted_at: string } | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
 
@@ -99,6 +100,7 @@ export default function TicketDetailPage() {
     setTicket(json.ticket)
     setComments(json.comments ?? [])
     setRole(json.role)
+    setCsat(json.csat ?? null)
     setCurrentStatus(json.ticket.status)
     setSubmitAsStatus(json.ticket.status)
     setLoading(false)
@@ -254,6 +256,28 @@ export default function TicketDetailPage() {
               </div>
             )}
           </div>
+
+          {/* CSAT Rating */}
+          {csat && (
+            <div className="p-5 border-b border-[#E5E9F2]">
+              <div className="text-xs font-semibold text-[#9BAABB] uppercase tracking-wide mb-3">Customer Satisfaction</div>
+              <div className="flex items-center gap-3">
+                <span className="text-3xl">
+                  {csat.score === 5 ? '😄' : csat.score === 4 ? '😊' : csat.score === 3 ? '😐' : csat.score === 2 ? '😕' : '😞'}
+                </span>
+                <div>
+                  <div className="flex gap-0.5">
+                    {[1, 2, 3, 4, 5].map((star) => (
+                      <span key={star} className={`text-base ${star <= csat.score ? 'text-yellow-400' : 'text-[#E5E9F2]'}`}>★</span>
+                    ))}
+                  </div>
+                  <div className="text-xs text-[#9BAABB] mt-0.5">
+                    Rated {csat.score}/5 · {new Date(csat.submitted_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Actions */}
           <div className="p-5 space-y-2">

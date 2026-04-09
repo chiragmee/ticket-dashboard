@@ -42,7 +42,14 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     // Return ticket even if comments fail
   }
 
-  return NextResponse.json({ ticket, comments, role: profile?.role })
+  // Fetch CSAT score for this ticket
+  const { data: csat } = await admin
+    .from('ticket_csat')
+    .select('score, submitted_at')
+    .eq('zendesk_id', parseInt(id))
+    .maybeSingle()
+
+  return NextResponse.json({ ticket, comments, role: profile?.role, csat: csat ?? null })
 }
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {

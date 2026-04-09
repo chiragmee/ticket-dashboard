@@ -27,13 +27,14 @@ export async function GET() {
     ? admin.from('tickets').select('category').eq('domain', forceDomain)
     : admin.from('tickets').select('category')
 
-  const [total, open, inProgress, resolved, overdue, allTickets] = await Promise.all([
+  const [total, open, inProgress, resolved, overdue, allTickets, csatData] = await Promise.all([
     base(),
     base().eq('status', 'open'),
     base().eq('status', 'in_progress'),
     base().in('status', ['resolved', 'closed']),
     base().lt('sla_breach_at', new Date().toISOString()).not('status', 'in', '("resolved","closed")'),
     categoryQuery,
+    admin.from('ticket_csat').select('score'),
   ])
 
   const byCategory: Record<string, number> = { bug: 0, feature: 0, query: 0, other: 0 }
@@ -43,6 +44,11 @@ export async function GET() {
     else byCategory['other']++
   }
 
+  const csatScores = csatData.data ?? []
+  const avg_csat = csatScores.length
+    ? Math.round((csatScores.reduce((sum, r) => sum + r.score, 0) / csatScores.length) * 10) / 10
+    : null
+
   return NextResponse.json({
     total: total.count ?? 0,
     open: open.count ?? 0,
@@ -50,5 +56,7 @@ export async function GET() {
     resolved: resolved.count ?? 0,
     overdue: overdue.count ?? 0,
     by_category: byCategory,
+    avg_csat,
+    csat_count: csatScores.length,
   })
 }
