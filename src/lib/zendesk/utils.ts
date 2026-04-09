@@ -1,3 +1,18 @@
+// SLA resolution time in hours by priority
+const SLA_HOURS: Record<string, number> = {
+  urgent: 4,
+  high: 8,
+  normal: 24,
+  low: 48,
+}
+
+export function computeSlaBreachAt(priority: string, createdAt: string): string {
+  const hours = SLA_HOURS[priority] ?? 24
+  const d = new Date(createdAt)
+  d.setHours(d.getHours() + hours)
+  return d.toISOString()
+}
+
 export function deriveDomain(subject: string, description: string, ccEmails: string): string {
   const text = `${subject} ${description} ${ccEmails}`.toLowerCase()
 
@@ -46,7 +61,8 @@ export function mapZendeskTicket(raw: Record<string, unknown>) {
   const baseStatus = statusMap[(raw.status as string)?.toLowerCase()] ?? 'open'
   const validStatuses = ['open', 'pending', 'in_progress', 'resolved', 'closed']
   const status = customStatus && validStatuses.includes(customStatus) ? customStatus : baseStatus
-  const priority = (raw.priority as string)?.toLowerCase() ?? 'normal'
+  const rawPriority = (raw.priority as string)?.toLowerCase() ?? 'normal'
+  const priority = ['low', 'normal', 'high', 'urgent'].includes(rawPriority) ? rawPriority : 'normal'
 
   // requester can be an object (API) or flat strings (trigger)
   const requester = raw.requester as Record<string, string> | undefined
@@ -66,7 +82,7 @@ export function mapZendeskTicket(raw: Record<string, unknown>) {
     subject,
     description,
     status,
-    priority: ['low', 'normal', 'high', 'urgent'].includes(priority) ? priority : 'normal',
+    priority,
     category: deriveCategory(tags),
     domain: deriveDomain(subject, description, ccEmails),
     requester_email: requesterEmail,
@@ -74,7 +90,7 @@ export function mapZendeskTicket(raw: Record<string, unknown>) {
     requester_org: '',
     assignee_name: assigneeName,
     tags,
-    sla_breach_at: (raw.due_at ?? null) as string | null,
+    sla_breach_at: ((raw.due_at as string | null) ?? computeSlaBreachAt(priority, createdAt)),
     zendesk_created_at: createdAt,
     zendesk_updated_at: updatedAt,
     synced_at: new Date().toISOString(),

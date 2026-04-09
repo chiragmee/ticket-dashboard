@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import { useParams } from 'next/navigation'
 
 type Ticket = {
@@ -44,6 +44,56 @@ const PRIORITY_COLORS: Record<string, string> = {
 
 const DOMAIN_LABELS: Record<string, string> = {
   krt: 'KRT', brigade: 'Brigade', acb: 'ACB', other: 'Other',
+}
+
+function SlaCountdown({ slaBreach, createdAt }: { slaBreach: string; createdAt: string }) {
+  const [now, setNow] = useState(() => Date.now())
+
+  useEffect(() => {
+    const t = setInterval(() => setNow(Date.now()), 1000)
+    return () => clearInterval(t)
+  }, [])
+
+  const breachMs = useMemo(() => new Date(slaBreach).getTime(), [slaBreach])
+  const startMs  = useMemo(() => new Date(createdAt).getTime(),  [createdAt])
+  const totalMs  = breachMs - startMs
+  const remaining = breachMs - now
+  const isBreached = remaining <= 0
+  const pct = Math.min(100, Math.max(0, ((now - startMs) / totalMs) * 100))
+
+  const fmt = (ms: number) => {
+    const abs = Math.abs(ms)
+    const h = Math.floor(abs / 3600000)
+    const m = Math.floor((abs % 3600000) / 60000)
+    const s = Math.floor((abs % 60000) / 1000)
+    if (h > 0) return `${h}h ${m}m`
+    if (m > 0) return `${m}m ${s}s`
+    return `${s}s`
+  }
+
+  const isWarning = !isBreached && remaining < 3600000
+  const barColor  = isBreached ? 'bg-red-500' : isWarning ? 'bg-amber-500' : 'bg-emerald-500'
+  const textColor = isBreached ? 'text-red-600' : isWarning ? 'text-amber-600' : 'text-emerald-600'
+  const label     = isBreached
+    ? `Breached ${fmt(remaining)} ago`
+    : isWarning
+      ? `${fmt(remaining)} remaining — act now`
+      : `${fmt(remaining)} remaining`
+
+  return (
+    <div className="space-y-1.5">
+      <div className={`text-xs font-semibold ${textColor}`}>{isBreached ? '⚠' : isWarning ? '⏰' : '✓'} {label}</div>
+      <div className="h-1.5 bg-[#F1F3F9] rounded-full overflow-hidden">
+        <div
+          className={`h-full rounded-full transition-all duration-1000 ${barColor}`}
+          style={{ width: `${pct}%` }}
+        />
+      </div>
+      <div className="text-xs text-[#9BAABB]">
+        SLA deadline: {new Date(slaBreach).toLocaleString('en-IN', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
+      </div>
+    </div>
+  )
 }
 
 function Avatar({ name }: { name: string }) {
@@ -176,7 +226,6 @@ export default function TicketDetailPage() {
     )
   }
 
-  const isOverdue = ticket.sla_breach_at && new Date(ticket.sla_breach_at) < new Date()
   // First comment = original request from customer; rest = conversation
   const [firstComment, ...threadComments] = comments
 
@@ -248,11 +297,9 @@ export default function TicketDetailPage() {
             ))}
 
             {ticket.sla_breach_at && (
-              <div className="flex items-center justify-between gap-2">
-                <span className="text-xs text-[#9BAABB]">SLA</span>
-                <span className={`text-xs font-medium ${isOverdue ? 'text-red-600' : 'text-green-600'}`}>
-                  {isOverdue ? '⚠ Breached' : '✓ On track'}
-                </span>
+              <div className="pt-1">
+                <div className="text-xs text-[#9BAABB] mb-2">SLA</div>
+                <SlaCountdown slaBreach={ticket.sla_breach_at} createdAt={ticket.zendesk_created_at} />
               </div>
             )}
           </div>

@@ -169,6 +169,7 @@ export function slaBreachEmail({
   category,
   assigneeName,
   breachedAt,
+  isWarning = false,
 }: {
   ticketId: number
   subject: string
@@ -176,11 +177,12 @@ export function slaBreachEmail({
   category: string
   assigneeName: string
   breachedAt: string
+  isWarning?: boolean
 }) {
   const content = `
-    <div style="background:#FEF2F2;border:1px solid #FECACA;border-radius:12px;padding:16px 20px;margin-bottom:24px;">
-      <div style="font-size:13px;color:#DC2626;font-weight:700;">⚠ SLA Breach Alert</div>
-      <div style="font-size:13px;color:#EF4444;margin-top:4px;">This ticket has exceeded its SLA deadline and requires immediate attention.</div>
+    <div style="background:${isWarning ? '#FFFBEB' : '#FEF2F2'};border:1px solid ${isWarning ? '#FDE68A' : '#FECACA'};border-radius:12px;padding:16px 20px;margin-bottom:24px;">
+      <div style="font-size:13px;color:${isWarning ? '#B45309' : '#DC2626'};font-weight:700;">${isWarning ? '⏰ SLA Warning' : '🚨 SLA Breach Alert'}</div>
+      <div style="font-size:13px;color:${isWarning ? '#D97706' : '#EF4444'};margin-top:4px;">${isWarning ? 'This ticket will breach its SLA in under 1 hour. Please take action now.' : 'This ticket has exceeded its SLA deadline and requires immediate attention.'}</div>
     </div>
 
     <h2 style="margin:0 0 16px;font-size:17px;font-weight:700;color:#1E2A3B;">Ticket Details</h2>

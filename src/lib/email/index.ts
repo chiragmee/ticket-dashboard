@@ -54,6 +54,7 @@ export async function sendSlaBreachAlert({
   category,
   assigneeName,
   breachedAt,
+  isWarning = false,
 }: {
   to: string[]
   ticketId: number
@@ -62,11 +63,15 @@ export async function sendSlaBreachAlert({
   category: string
   assigneeName: string
   breachedAt: string
+  isWarning?: boolean
 }) {
+  const emailSubject = isWarning
+    ? `⏰ SLA Warning — Ticket #${ticketId} breaches in under 1 hour`
+    : `🚨 SLA Breach — Ticket #${ticketId} needs immediate attention`
   return resend.emails.send({
     from: FROM,
     to,
-    subject: `⚠ SLA Breach — Ticket #${ticketId} needs immediate attention`,
-    html: slaBreachEmail({ ticketId, subject, requesterEmail, category, assigneeName, breachedAt }),
+    subject: emailSubject,
+    html: slaBreachEmail({ ticketId, subject, requesterEmail, category, assigneeName, breachedAt, isWarning }),
   })
 }
