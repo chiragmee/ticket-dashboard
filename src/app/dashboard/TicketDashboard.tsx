@@ -422,7 +422,11 @@ export default function TicketDashboard({
                           <span className="text-[#6B7A99]">#{t.zendesk_id}</span>
                         )}
                       </td>
-                      <td className="px-4 py-3 text-[#1E2A3B] max-w-[200px] truncate">{t.subject}</td>
+                      <td className="px-4 py-3 max-w-[200px] truncate">
+                        <a href={`/dashboard/tickets/${t.zendesk_id}`} className="text-[#1E2A3B] hover:text-[#3B6EF0] hover:underline">
+                          {t.subject}
+                        </a>
+                      </td>
                       <td className="px-4 py-3">
                         <span className={`px-2 py-0.5 rounded text-xs font-medium ${
                           t.domain === 'krt' ? 'bg-indigo-100 text-indigo-700' :
