@@ -259,6 +259,7 @@ export default function TicketDashboard({
           {[
             { label: 'Dashboard', href: '/dashboard', active: true },
             { label: 'Sync', href: '/dashboard/sync', active: false },
+            { label: 'Manage Users', href: '/admin/users', active: false },
           ].map((item) => (
             <a
               key={item.label}
