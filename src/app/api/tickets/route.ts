@@ -55,8 +55,19 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
 
+  // Fetch CSAT scores for this page of tickets
+  let csatMap: Record<number, number> = {}
+  if (data && data.length > 0) {
+    const ids = data.map((t: { zendesk_id: number }) => t.zendesk_id)
+    const { data: csatRows } = await admin
+      .from('ticket_csat')
+      .select('zendesk_id, score')
+      .in('zendesk_id', ids)
+    csatMap = Object.fromEntries((csatRows ?? []).map((r: { zendesk_id: number; score: number }) => [r.zendesk_id, r.score]))
+  }
+
   return NextResponse.json({
-    data,
+    data: (data ?? []).map((t: { zendesk_id: number }) => ({ ...t, csat_score: csatMap[t.zendesk_id] ?? null })),
     count: count ?? 0,
     page,
     totalPages: Math.ceil((count ?? 0) / pageSize),

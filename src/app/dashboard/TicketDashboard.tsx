@@ -22,6 +22,7 @@ type Ticket = {
   assignee_name: string
   zendesk_created_at: string
   sla_breach_at: string | null
+  csat_score: number | null
 }
 
 type Summary = {
@@ -42,74 +43,98 @@ type RealtimeEvent = {
   timestamp: Date
 }
 
-const STATUS_COLORS: Record<string, string> = {
-  open: 'bg-blue-100 text-blue-700',
-  pending: 'bg-yellow-100 text-yellow-700',
-  in_progress: 'bg-purple-100 text-purple-700',
-  resolved: 'bg-green-100 text-green-700',
-  closed: 'bg-gray-100 text-gray-600',
+const STATUS_META: Record<string, { dot: string; badge: string; label: string }> = {
+  open:        { dot: 'bg-blue-500',   badge: 'bg-blue-50 text-blue-700 border-blue-200',     label: 'Open' },
+  pending:     { dot: 'bg-amber-500',  badge: 'bg-amber-50 text-amber-700 border-amber-200',  label: 'Pending' },
+  in_progress: { dot: 'bg-violet-500', badge: 'bg-violet-50 text-violet-700 border-violet-200', label: 'In Progress' },
+  resolved:    { dot: 'bg-emerald-500',badge: 'bg-emerald-50 text-emerald-700 border-emerald-200', label: 'Resolved' },
+  closed:      { dot: 'bg-gray-400',   badge: 'bg-gray-50 text-gray-600 border-gray-200',     label: 'Closed' },
 }
 
-const PRIORITY_COLORS: Record<string, string> = {
-  urgent: 'bg-red-500',
-  high: 'bg-orange-400',
-  normal: 'bg-blue-400',
-  low: 'bg-gray-300',
+const PRIORITY_META: Record<string, { color: string; label: string }> = {
+  urgent: { color: 'bg-red-500',    label: 'Urgent' },
+  high:   { color: 'bg-orange-400', label: 'High' },
+  normal: { color: 'bg-blue-400',   label: 'Normal' },
+  low:    { color: 'bg-gray-300',   label: 'Low' },
 }
 
-const CATEGORY_COLORS: Record<string, string> = {
-  bug: 'bg-red-100 text-red-700',
-  feature: 'bg-blue-100 text-blue-700',
-  query: 'bg-gray-100 text-gray-700',
-  enhancement: 'bg-purple-100 text-purple-700',
-  other: 'bg-yellow-100 text-yellow-700',
+const CATEGORY_META: Record<string, { badge: string }> = {
+  bug:         { badge: 'bg-red-50 text-red-700 border-red-200' },
+  feature:     { badge: 'bg-blue-50 text-blue-700 border-blue-200' },
+  query:       { badge: 'bg-slate-50 text-slate-600 border-slate-200' },
+  enhancement: { badge: 'bg-violet-50 text-violet-700 border-violet-200' },
+  other:       { badge: 'bg-amber-50 text-amber-700 border-amber-200' },
 }
 
+const DOMAIN_META: Record<string, { badge: string; label: string }> = {
+  krt:     { badge: 'bg-indigo-50 text-indigo-700 border-indigo-200',  label: 'KRT' },
+  brigade: { badge: 'bg-orange-50 text-orange-700 border-orange-200',  label: 'Brigade' },
+  acb:     { badge: 'bg-teal-50 text-teal-700 border-teal-200',        label: 'ACB' },
+  other:   { badge: 'bg-gray-50 text-gray-600 border-gray-200',        label: 'Other' },
+}
+
+const CSAT_EMOJI: Record<number, string> = { 1: '😞', 2: '😕', 3: '😐', 4: '😊', 5: '😄' }
+
+// ─── KPI Card ───────────────────────────────────────────────────────────────
 function KPICard({
-  label,
-  value,
-  active,
-  onClick,
-  color,
+  label, value, active, onClick, accentColor, icon,
 }: {
-  label: string
-  value: number
-  active: boolean
-  onClick: () => void
-  color: string
+  label: string; value: number; active: boolean; onClick: () => void; accentColor: string; icon: React.ReactNode
 }) {
   return (
     <button
       onClick={onClick}
-      className={`flex-1 rounded-xl p-4 text-left border transition-all ${
-        active ? `${color} border-transparent shadow-md` : 'bg-white border-[#E5E9F2] hover:shadow-sm'
+      className={`relative flex-1 rounded-2xl p-5 text-left border transition-all duration-200 overflow-hidden group ${
+        active
+          ? 'bg-[#3B6EF0] border-transparent shadow-lg shadow-[#3B6EF0]/25 scale-[1.02]'
+          : 'bg-white border-[#E5E9F2] hover:shadow-md hover:border-[#3B6EF0]/30 hover:scale-[1.01]'
       }`}
     >
-      <div className="text-2xl font-bold text-[#1E2A3B]">{value}</div>
-      <div className="text-sm text-[#6B7A99] mt-1">{label}</div>
+      <div className={`absolute top-3 right-3 w-8 h-8 rounded-xl flex items-center justify-center transition-colors duration-200 ${active ? 'bg-white/20' : accentColor}`}>
+        {icon}
+      </div>
+      <div className={`text-3xl font-bold tabular-nums transition-colors duration-200 ${active ? 'text-white' : 'text-[#1E2A3B]'}`}>
+        {value}
+      </div>
+      <div className={`text-sm font-medium mt-1.5 transition-colors duration-200 ${active ? 'text-white/80' : 'text-[#6B7A99]'}`}>
+        {label}
+      </div>
     </button>
   )
 }
 
+// ─── Skeleton row ────────────────────────────────────────────────────────────
+function SkeletonRow() {
+  return (
+    <tr className="border-b border-[#E5E9F2] animate-pulse">
+      {[12, 44, 16, 16, 8, 18, 24, 20, 16, 10, 8].map((w, i) => (
+        <td key={i} className="px-4 py-4">
+          <div className={`h-3.5 bg-[#EEF0F5] rounded-full w-${w}`} style={{ width: `${w * 4}px` }} />
+        </td>
+      ))}
+    </tr>
+  )
+}
+
+// ─── Donut Chart ─────────────────────────────────────────────────────────────
 function DonutChart({ summary }: { summary: Summary }) {
   const total = summary.total || 1
   const slices = [
-    { label: 'Open', value: summary.open, color: '#3B6EF0' },
-    { label: 'In Progress', value: summary.in_progress, color: '#A855F7' },
-    { label: 'Resolved', value: summary.resolved, color: '#22C55E' },
-    { label: 'Overdue', value: summary.overdue, color: '#EF4444' },
+    { label: 'Open',       value: summary.open,        color: '#3B6EF0' },
+    { label: 'In Progress',value: summary.in_progress, color: '#8B5CF6' },
+    { label: 'Resolved',   value: summary.resolved,    color: '#10B981' },
+    { label: 'Overdue',    value: summary.overdue,      color: '#EF4444' },
   ]
-
   let cumulative = 0
-  const radius = 60
+  const radius = 58
   const circumference = 2 * Math.PI * radius
 
   return (
-    <div className="bg-white rounded-xl border border-[#E5E9F2] p-5">
+    <div className="bg-white rounded-2xl border border-[#E5E9F2] p-5 shadow-sm">
       <h3 className="text-sm font-semibold text-[#1E2A3B] mb-4">Status Breakdown</h3>
       <div className="flex items-center gap-6">
-        <svg width="140" height="140" viewBox="0 0 140 140">
-          <circle cx="70" cy="70" r={radius} fill="none" stroke="#F4F6FB" strokeWidth="20" />
+        <svg width="136" height="136" viewBox="0 0 136 136">
+          <circle cx="68" cy="68" r={radius} fill="none" stroke="#F1F3F9" strokeWidth="18" />
           {slices.map((slice) => {
             const pct = slice.value / total
             const dash = pct * circumference
@@ -118,31 +143,27 @@ function DonutChart({ summary }: { summary: Summary }) {
             return (
               <circle
                 key={slice.label}
-                cx="70"
-                cy="70"
-                r={radius}
+                cx="68" cy="68" r={radius}
                 fill="none"
                 stroke={slice.color}
-                strokeWidth="20"
+                strokeWidth="18"
+                strokeLinecap="round"
                 strokeDasharray={`${dash} ${circumference - dash}`}
                 strokeDashoffset={offset}
-                transform="rotate(-90 70 70)"
+                transform="rotate(-90 68 68)"
+                className="transition-all duration-500"
               />
             )
           })}
-          <text x="70" y="65" textAnchor="middle" className="text-lg" fontSize="18" fontWeight="bold" fill="#1E2A3B">
-            {total}
-          </text>
-          <text x="70" y="82" textAnchor="middle" fontSize="10" fill="#6B7A99">
-            Total
-          </text>
+          <text x="68" y="62" textAnchor="middle" fontSize="20" fontWeight="700" fill="#1E2A3B">{total}</text>
+          <text x="68" y="78" textAnchor="middle" fontSize="10" fill="#9BAABB">Total</text>
         </svg>
-        <div className="space-y-2">
+        <div className="space-y-2.5 flex-1">
           {slices.map((s) => (
-            <div key={s.label} className="flex items-center gap-2 text-sm">
-              <span className="w-3 h-3 rounded-full inline-block" style={{ backgroundColor: s.color }} />
-              <span className="text-[#6B7A99]">{s.label}</span>
-              <span className="font-medium text-[#1E2A3B] ml-auto">{s.value}</span>
+            <div key={s.label} className="flex items-center gap-2.5 text-sm">
+              <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: s.color }} />
+              <span className="text-[#6B7A99] flex-1">{s.label}</span>
+              <span className="font-semibold text-[#1E2A3B]">{s.value}</span>
             </div>
           ))}
         </div>
@@ -151,31 +172,25 @@ function DonutChart({ summary }: { summary: Summary }) {
   )
 }
 
+// ─── Category Bars ───────────────────────────────────────────────────────────
 function CategoryBars({ byCategory, total }: { byCategory: Record<string, number>; total: number }) {
   const colors: Record<string, string> = {
-    bug: '#EF4444',
-    feature: '#3B6EF0',
-    query: '#6B7A99',
-    other: '#F59E0B',
+    bug: '#EF4444', feature: '#3B6EF0', query: '#64748B', other: '#F59E0B',
   }
-
   return (
-    <div className="bg-white rounded-xl border border-[#E5E9F2] p-5">
+    <div className="bg-white rounded-2xl border border-[#E5E9F2] p-5 shadow-sm">
       <h3 className="text-sm font-semibold text-[#1E2A3B] mb-4">By Category</h3>
-      <div className="space-y-3">
+      <div className="space-y-3.5">
         {Object.entries(byCategory).map(([cat, count]) => (
           <div key={cat}>
-            <div className="flex justify-between text-sm mb-1">
-              <span className="capitalize text-[#1E2A3B]">{cat}</span>
-              <span className="text-[#6B7A99]">{count}</span>
+            <div className="flex justify-between text-sm mb-1.5">
+              <span className="capitalize font-medium text-[#1E2A3B]">{cat}</span>
+              <span className="text-[#6B7A99] tabular-nums">{count}</span>
             </div>
-            <div className="h-2 bg-[#F4F6FB] rounded-full overflow-hidden">
+            <div className="h-1.5 bg-[#F1F3F9] rounded-full overflow-hidden">
               <div
-                className="h-full rounded-full transition-all"
-                style={{
-                  width: `${total ? (count / total) * 100 : 0}%`,
-                  backgroundColor: colors[cat] ?? '#6B7A99',
-                }}
+                className="h-full rounded-full transition-all duration-700 ease-out"
+                style={{ width: `${total ? (count / total) * 100 : 0}%`, backgroundColor: colors[cat] ?? '#6B7A99' }}
               />
             </div>
           </div>
@@ -185,10 +200,9 @@ function CategoryBars({ byCategory, total }: { byCategory: Record<string, number
   )
 }
 
+// ─── Main Dashboard ──────────────────────────────────────────────────────────
 export default function TicketDashboard({
-  initialTickets,
-  initialSummary,
-  initialCount,
+  initialTickets, initialSummary, initialCount,
 }: {
   initialTickets: Ticket[]
   initialSummary: Summary
@@ -206,8 +220,10 @@ export default function TicketDashboard({
   const [loading, setLoading] = useState(false)
   const [events, setEvents] = useState<RealtimeEvent[]>([])
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null)
+  const [mounted, setMounted] = useState(false)
 
   useEffect(() => {
+    setMounted(true)
     fetch('/api/auth/profile').then(r => r.json()).then(json => {
       if (json.profile) setUserProfile(json.profile)
     })
@@ -255,22 +271,46 @@ export default function TicketDashboard({
   const { isConnected } = useTicketRealtime({ onInsert: handleInsert, onUpdate: handleUpdate })
 
   const kpiCards = [
-    { label: 'Total', value: summary.total, key: '', color: 'bg-blue-50' },
-    { label: 'Open', value: summary.open, key: 'open', color: 'bg-blue-50' },
-    { label: 'In Progress', value: summary.in_progress, key: 'in_progress', color: 'bg-purple-50' },
-    { label: 'Resolved', value: summary.resolved, key: 'resolved', color: 'bg-green-50' },
-    { label: 'Overdue', value: summary.overdue, key: 'overdue', color: 'bg-red-50' },
+    {
+      label: 'Total', value: summary.total, key: '', accentColor: 'bg-slate-100',
+      icon: <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><rect x="2" y="2" width="5" height="5" rx="1" stroke="#6B7A99" strokeWidth="1.5"/><rect x="9" y="2" width="5" height="5" rx="1" stroke="#6B7A99" strokeWidth="1.5"/><rect x="2" y="9" width="5" height="5" rx="1" stroke="#6B7A99" strokeWidth="1.5"/><rect x="9" y="9" width="5" height="5" rx="1" stroke="#6B7A99" strokeWidth="1.5"/></svg>
+    },
+    {
+      label: 'Open', value: summary.open, key: 'open', accentColor: 'bg-blue-50',
+      icon: <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="6" stroke="#3B6EF0" strokeWidth="1.5"/><path d="M8 5v3l2 1.5" stroke="#3B6EF0" strokeWidth="1.5" strokeLinecap="round"/></svg>
+    },
+    {
+      label: 'In Progress', value: summary.in_progress, key: 'in_progress', accentColor: 'bg-violet-50',
+      icon: <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M8 2a6 6 0 0 1 6 6" stroke="#8B5CF6" strokeWidth="1.5" strokeLinecap="round"/><path d="M8 2a6 6 0 1 0 6 6" stroke="#8B5CF6" strokeWidth="1.5" strokeLinecap="round" strokeDasharray="3 3"/></svg>
+    },
+    {
+      label: 'Resolved', value: summary.resolved, key: 'resolved', accentColor: 'bg-emerald-50',
+      icon: <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="6" stroke="#10B981" strokeWidth="1.5"/><path d="M5.5 8.5l2 2 3-4" stroke="#10B981" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+    },
+    {
+      label: 'Overdue', value: summary.overdue, key: 'overdue', accentColor: 'bg-red-50',
+      icon: <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M8 2L8 9M8 11.5v.5" stroke="#EF4444" strokeWidth="1.5" strokeLinecap="round"/><circle cx="8" cy="8" r="6" stroke="#EF4444" strokeWidth="1.5"/></svg>
+    },
   ]
 
   return (
-    <div className="flex h-screen bg-[#F4F6FB]">
+    <div className={`flex h-screen bg-[#F4F6FB] transition-opacity duration-500 ${mounted ? 'opacity-100' : 'opacity-0'}`}>
+
       {/* Sidebar */}
-      <aside className="w-56 bg-[#1A2038] flex-shrink-0 flex flex-col">
+      <aside className="w-56 bg-gradient-to-b from-[#1A2038] to-[#141929] flex-shrink-0 flex flex-col shadow-xl">
         <div className="p-6 border-b border-white/10">
-          <div className="text-white font-bold text-lg">TicketView</div>
-          <div className="text-white/40 text-xs mt-1">Zendesk Dashboard</div>
+          <div className="flex items-center gap-2.5">
+            <div className="w-7 h-7 bg-[#3B6EF0] rounded-lg flex items-center justify-center flex-shrink-0">
+              <span className="text-white font-bold text-xs">TV</span>
+            </div>
+            <div>
+              <div className="text-white font-bold text-sm leading-tight">TicketView</div>
+              <div className="text-white/40 text-xs">Zendesk Dashboard</div>
+            </div>
+          </div>
         </div>
-        <nav className="p-4 space-y-1 flex-1">
+
+        <nav className="p-3 space-y-0.5 flex-1">
           {[
             { label: 'Dashboard', href: '/dashboard', active: true },
             ...(userProfile?.role === 'admin' ? [
@@ -281,19 +321,22 @@ export default function TicketDashboard({
             <a
               key={item.label}
               href={item.href}
-              className={`block px-3 py-2 rounded-lg text-sm transition-colors ${
-                item.active ? 'bg-[#3B6EF0] text-white' : 'text-white/60 hover:text-white hover:bg-white/10'
+              className={`flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm transition-all duration-150 ${
+                item.active
+                  ? 'bg-[#3B6EF0] text-white shadow-md shadow-[#3B6EF0]/30'
+                  : 'text-white/50 hover:text-white hover:bg-white/8'
               }`}
             >
               {item.label}
             </a>
           ))}
         </nav>
-        <div className="p-4 border-t border-white/10">
+
+        <div className="p-3 border-t border-white/10">
           {userProfile && (
-            <div className="mb-3">
-              <div className="text-white text-sm font-medium truncate">{userProfile.full_name}</div>
-              <div className="text-white/40 text-xs capitalize">{userProfile.role}</div>
+            <div className="px-3 py-2 mb-1">
+              <div className="text-white text-sm font-semibold truncate">{userProfile.full_name}</div>
+              <div className="text-white/40 text-xs capitalize mt-0.5">{userProfile.role}</div>
             </div>
           )}
           <button
@@ -301,8 +344,9 @@ export default function TicketDashboard({
               await fetch('/api/auth/logout', { method: 'POST' })
               window.location.href = '/login'
             }}
-            className="w-full text-left px-3 py-2 rounded-lg text-sm text-white/60 hover:text-white hover:bg-white/10 transition-colors"
+            className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-sm text-white/50 hover:text-white hover:bg-white/8 transition-all duration-150"
           >
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M10 3h3a1 1 0 0 1 1 1v8a1 1 0 0 1-1 1h-3M7 11l3-3-3-3M10 8H2" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
             Sign out
           </button>
         </div>
@@ -310,27 +354,39 @@ export default function TicketDashboard({
 
       {/* Main */}
       <div className="flex-1 flex flex-col overflow-hidden">
+
         {/* Top bar */}
-        <header className="bg-white border-b border-[#E5E9F2] px-6 py-4 flex items-center justify-between">
-          <h1 className="text-lg font-semibold text-[#1E2A3B]">Ticket Dashboard</h1>
-          <div className="flex items-center gap-4">
-            <div className="flex items-center gap-2 text-sm text-[#6B7A99]">
-              <span className={`w-2 h-2 rounded-full ${isConnected ? 'bg-green-500 animate-pulse' : 'bg-gray-300'}`} />
-              {isConnected ? 'Live' : 'Connecting...'}
+        <header className="bg-white/80 backdrop-blur-sm border-b border-[#E5E9F2] px-6 py-3.5 flex items-center justify-between sticky top-0 z-10">
+          <h1 className="text-base font-semibold text-[#1E2A3B]">Ticket Dashboard</h1>
+          <div className="flex items-center gap-3">
+            {/* Live indicator */}
+            <div className={`flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-full border transition-all duration-300 ${
+              isConnected ? 'bg-emerald-50 border-emerald-200 text-emerald-700' : 'bg-gray-50 border-gray-200 text-gray-500'
+            }`}>
+              <span className={`w-1.5 h-1.5 rounded-full ${isConnected ? 'bg-emerald-500 animate-pulse' : 'bg-gray-400'}`} />
+              {isConnected ? 'Live' : 'Connecting'}
             </div>
-            <input
-              type="text"
-              placeholder="Search tickets..."
-              value={search}
-              onChange={(e) => { setSearch(e.target.value); setPage(1) }}
-              className="border border-[#E5E9F2] rounded-lg px-3 py-1.5 text-sm w-56 focus:outline-none focus:border-[#3B6EF0]"
-            />
+            {/* Search */}
+            <div className="relative">
+              <svg width="14" height="14" viewBox="0 0 16 16" fill="none" className="absolute left-3 top-1/2 -translate-y-1/2 text-[#9BAABB]">
+                <circle cx="6.5" cy="6.5" r="4.5" stroke="currentColor" strokeWidth="1.5"/>
+                <path d="M10 10l3 3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+              </svg>
+              <input
+                type="text"
+                placeholder="Search tickets…"
+                value={search}
+                onChange={(e) => { setSearch(e.target.value); setPage(1) }}
+                className="border border-[#E5E9F2] rounded-xl pl-8 pr-4 py-2 text-sm w-52 focus:outline-none focus:border-[#3B6EF0] focus:ring-2 focus:ring-[#3B6EF0]/10 transition-all duration-150 bg-[#F8F9FC]"
+              />
+            </div>
           </div>
         </header>
 
-        <div className="flex-1 overflow-y-auto p-6 space-y-6">
+        <div className="flex-1 overflow-y-auto p-6 space-y-5">
+
           {/* KPI Cards */}
-          <div className="flex gap-4">
+          <div className="flex gap-3">
             {kpiCards.map((card) => (
               <KPICard
                 key={card.label}
@@ -338,27 +394,28 @@ export default function TicketDashboard({
                 value={card.value}
                 active={statusFilter === card.key}
                 onClick={() => { setStatusFilter(statusFilter === card.key ? '' : card.key); setPage(1) }}
-                color={card.color}
+                accentColor={card.accentColor}
+                icon={card.icon}
               />
             ))}
           </div>
 
-          {/* CSAT Score card */}
+          {/* CSAT Banner */}
           {summary.avg_csat !== null && summary.avg_csat !== undefined && (
-            <div className="bg-white rounded-xl border border-[#E5E9F2] p-4 flex items-center gap-5">
-              <div className="text-4xl">
+            <div className="bg-gradient-to-r from-amber-50 to-orange-50 rounded-2xl border border-amber-200/60 p-4 flex items-center gap-5 shadow-sm">
+              <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center shadow-sm text-2xl flex-shrink-0">
                 {summary.avg_csat >= 4.5 ? '😄' : summary.avg_csat >= 3.5 ? '😊' : summary.avg_csat >= 2.5 ? '😐' : summary.avg_csat >= 1.5 ? '😕' : '😞'}
               </div>
               <div>
-                <div className="flex items-baseline gap-2">
-                  <span className="text-2xl font-bold text-[#1E2A3B]">{summary.avg_csat.toFixed(1)}</span>
-                  <span className="text-sm text-[#6B7A99]">/ 5</span>
+                <div className="flex items-baseline gap-1.5">
+                  <span className="text-xl font-bold text-[#1E2A3B]">{summary.avg_csat.toFixed(1)}</span>
+                  <span className="text-sm text-[#6B7A99]">/ 5 avg CSAT</span>
                 </div>
-                <div className="text-sm text-[#6B7A99]">Avg CSAT · {summary.csat_count} {summary.csat_count === 1 ? 'response' : 'responses'}</div>
+                <div className="text-xs text-[#9BAABB] mt-0.5">{summary.csat_count} {summary.csat_count === 1 ? 'response' : 'responses'}</div>
               </div>
-              <div className="ml-auto flex gap-1">
-                {[1, 2, 3, 4, 5].map((star) => (
-                  <span key={star} className={`text-lg ${star <= Math.round(summary.avg_csat!) ? 'text-yellow-400' : 'text-[#E5E9F2]'}`}>★</span>
+              <div className="flex gap-0.5 ml-1">
+                {[1,2,3,4,5].map((s) => (
+                  <span key={s} className={`text-lg transition-colors ${s <= Math.round(summary.avg_csat!) ? 'text-amber-400' : 'text-[#E5E9F2]'}`}>★</span>
                 ))}
               </div>
             </div>
@@ -371,34 +428,38 @@ export default function TicketDashboard({
           </div>
 
           {/* Filters */}
-          <div className="flex items-center gap-3">
-            <div className="flex gap-1 bg-white border border-[#E5E9F2] rounded-lg p-1">
+          <div className="flex items-center gap-3 flex-wrap">
+            <div className="flex gap-1 bg-white border border-[#E5E9F2] rounded-xl p-1 shadow-sm">
               {['', 'open', 'in_progress', 'resolved', 'closed'].map((s) => (
                 <button
                   key={s}
                   onClick={() => { setStatusFilter(s); setPage(1) }}
-                  className={`px-3 py-1 rounded text-sm transition-colors ${
-                    statusFilter === s ? 'bg-[#3B6EF0] text-white' : 'text-[#6B7A99] hover:text-[#1E2A3B]'
+                  className={`px-3.5 py-1.5 rounded-lg text-xs font-medium transition-all duration-150 ${
+                    statusFilter === s
+                      ? 'bg-[#3B6EF0] text-white shadow-sm'
+                      : 'text-[#6B7A99] hover:text-[#1E2A3B] hover:bg-[#F4F6FB]'
                   }`}
                 >
                   {s === '' ? 'All' : s.replace('_', ' ')}
                 </button>
               ))}
             </div>
+
             <select
               value={categoryFilter}
               onChange={(e) => { setCategoryFilter(e.target.value); setPage(1) }}
-              className="border border-[#E5E9F2] rounded-lg px-3 py-1.5 text-sm bg-white text-[#1E2A3B] focus:outline-none focus:border-[#3B6EF0]"
+              className="border border-[#E5E9F2] rounded-xl px-3 py-2 text-xs font-medium bg-white text-[#1E2A3B] focus:outline-none focus:border-[#3B6EF0] focus:ring-2 focus:ring-[#3B6EF0]/10 transition-all shadow-sm cursor-pointer"
             >
               <option value="">All Categories</option>
               {['bug', 'feature', 'query', 'other'].map((c) => (
-                <option key={c} value={c}>{c}</option>
+                <option key={c} value={c}>{c.charAt(0).toUpperCase() + c.slice(1)}</option>
               ))}
             </select>
+
             <select
               value={domainFilter}
               onChange={(e) => { setDomainFilter(e.target.value); setPage(1) }}
-              className="border border-[#E5E9F2] rounded-lg px-3 py-1.5 text-sm bg-white text-[#1E2A3B] focus:outline-none focus:border-[#3B6EF0]"
+              className="border border-[#E5E9F2] rounded-xl px-3 py-2 text-xs font-medium bg-white text-[#1E2A3B] focus:outline-none focus:border-[#3B6EF0] focus:ring-2 focus:ring-[#3B6EF0]/10 transition-all shadow-sm cursor-pointer"
             >
               <option value="">All Domains</option>
               <option value="krt">KRT</option>
@@ -406,120 +467,192 @@ export default function TicketDashboard({
               <option value="acb">ACB</option>
               <option value="other">Other</option>
             </select>
+
+            {(statusFilter || categoryFilter || domainFilter || search) && (
+              <button
+                onClick={() => { setStatusFilter(''); setCategoryFilter(''); setDomainFilter(''); setSearch(''); setPage(1) }}
+                className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-medium text-[#6B7A99] hover:text-red-600 hover:bg-red-50 border border-[#E5E9F2] hover:border-red-200 transition-all duration-150"
+              >
+                <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M1 1l8 8M9 1L1 9" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
+                Clear filters
+              </button>
+            )}
           </div>
 
           {/* Table */}
-          <div className="bg-white rounded-xl border border-[#E5E9F2] overflow-hidden">
-            {loading ? (
-              <div className="p-8 text-center text-[#6B7A99] text-sm">Loading...</div>
-            ) : tickets.length === 0 ? (
-              <div className="p-8 text-center text-[#6B7A99] text-sm">No tickets found.</div>
-            ) : (
-              <table className="w-full text-sm">
-                <thead className="bg-[#F4F6FB] border-b border-[#E5E9F2]">
-                  <tr>
-                    {['ID', 'Subject', 'Domain', 'Category', 'Priority', 'Status', 'Requester', 'Assignee', 'Created', 'SLA'].map((h) => (
-                      <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-[#6B7A99] uppercase tracking-wide">
-                        {h}
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-[#E5E9F2]">
-                  {tickets.map((t) => (
-                    <tr key={t.id} className="hover:bg-[#F4F6FB] transition-colors">
-                      <td className="px-4 py-3 font-mono">
-                        {userProfile?.role === 'admin' || userProfile?.role === 'member' ? (
-                          <a
-                            href={`https://${process.env.NEXT_PUBLIC_ZENDESK_SUBDOMAIN ?? 'selfemployed-31120'}.zendesk.com/agent/tickets/${t.zendesk_id}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="inline-flex items-center gap-1 text-[#3B6EF0] hover:underline"
-                          >
-                            #{t.zendesk_id}
-                            <svg width="10" height="10" viewBox="0 0 10 10" fill="none" className="opacity-60">
-                              <path d="M1.5 8.5L8.5 1.5M8.5 1.5H3.5M8.5 1.5V6.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-                            </svg>
-                          </a>
-                        ) : (
-                          <span className="text-[#6B7A99]">#{t.zendesk_id}</span>
-                        )}
-                      </td>
-                      <td className="px-4 py-3 max-w-[200px] truncate">
-                        <a href={`/dashboard/tickets/${t.zendesk_id}`} className="text-[#1E2A3B] hover:text-[#3B6EF0] hover:underline">
-                          {t.subject}
-                        </a>
-                      </td>
-                      <td className="px-4 py-3">
-                        <span className={`px-2 py-0.5 rounded text-xs font-medium ${
-                          t.domain === 'krt' ? 'bg-indigo-100 text-indigo-700' :
-                          t.domain === 'brigade' ? 'bg-orange-100 text-orange-700' :
-                          t.domain === 'acb' ? 'bg-teal-100 text-teal-700' :
-                          'bg-gray-100 text-gray-600'
-                        }`}>
-                          {t.domain === 'krt' ? 'KRT' : t.domain === 'brigade' ? 'Brigade' : t.domain === 'acb' ? 'ACB' : 'Other'}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3">
-                        <span className={`px-2 py-0.5 rounded text-xs font-medium ${CATEGORY_COLORS[t.category] ?? 'bg-gray-100 text-gray-600'}`}>
-                          {t.category}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3">
-                        <span className={`inline-block w-2.5 h-2.5 rounded-full ${PRIORITY_COLORS[t.priority] ?? 'bg-gray-300'}`} title={t.priority} />
-                      </td>
-                      <td className="px-4 py-3">
-                        <span className={`px-2 py-0.5 rounded text-xs font-medium ${STATUS_COLORS[t.status] ?? 'bg-gray-100 text-gray-600'}`}>
-                          {t.status.replace('_', ' ')}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3 text-[#6B7A99] max-w-[120px] truncate">{t.requester_name || t.requester_email}</td>
-                      <td className="px-4 py-3 text-[#6B7A99]">{t.assignee_name || '—'}</td>
-                      <td className="px-4 py-3 text-[#6B7A99] whitespace-nowrap">
-                        {new Date(t.zendesk_created_at).toLocaleDateString()}
-                      </td>
-                      <td className="px-4 py-3">
-                        {t.sla_breach_at ? (
-                          <span className={`text-xs font-medium ${new Date(t.sla_breach_at) < new Date() ? 'text-red-500' : 'text-green-500'}`}>
-                            {new Date(t.sla_breach_at) < new Date() ? 'Breached' : 'On track'}
-                          </span>
-                        ) : (
-                          <span className="text-[#6B7A99]">—</span>
-                        )}
-                      </td>
-                    </tr>
+          <div className="bg-white rounded-2xl border border-[#E5E9F2] overflow-hidden shadow-sm">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-[#E5E9F2] bg-[#F8F9FC]">
+                  {['ID', 'Subject', 'Domain', 'Category', 'Priority', 'Status', 'Requester', 'Assignee', 'Created', 'SLA', 'CSAT'].map((h) => (
+                    <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-[#9BAABB] uppercase tracking-wider">
+                      {h}
+                    </th>
                   ))}
-                </tbody>
-              </table>
-            )}
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-[#F1F3F9]">
+                {loading ? (
+                  Array.from({ length: 8 }).map((_, i) => <SkeletonRow key={i} />)
+                ) : tickets.length === 0 ? (
+                  <tr>
+                    <td colSpan={11} className="px-4 py-16 text-center text-[#9BAABB] text-sm">
+                      <div className="flex flex-col items-center gap-2">
+                        <svg width="32" height="32" viewBox="0 0 32 32" fill="none" className="opacity-30">
+                          <rect x="4" y="6" width="24" height="20" rx="2" stroke="#6B7A99" strokeWidth="2"/>
+                          <path d="M10 12h12M10 17h8" stroke="#6B7A99" strokeWidth="2" strokeLinecap="round"/>
+                        </svg>
+                        No tickets found
+                      </div>
+                    </td>
+                  </tr>
+                ) : (
+                  tickets.map((t) => {
+                    const statusM = STATUS_META[t.status] ?? STATUS_META['open']
+                    const priorityM = PRIORITY_META[t.priority] ?? PRIORITY_META['normal']
+                    const categoryM = CATEGORY_META[t.category] ?? CATEGORY_META['other']
+                    const domainM = DOMAIN_META[t.domain] ?? DOMAIN_META['other']
+                    const isOverdue = t.sla_breach_at && new Date(t.sla_breach_at) < new Date()
+
+                    return (
+                      <tr
+                        key={t.id}
+                        className="hover:bg-[#F8F9FC] transition-colors duration-100 group"
+                      >
+                        <td className="px-4 py-3.5 font-mono">
+                          {userProfile?.role === 'admin' || userProfile?.role === 'member' ? (
+                            <a
+                              href={`https://${process.env.NEXT_PUBLIC_ZENDESK_SUBDOMAIN ?? 'selfemployed-31120'}.zendesk.com/agent/tickets/${t.zendesk_id}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center gap-1 text-[#3B6EF0] hover:text-[#2a5cd4] font-medium text-xs transition-colors"
+                            >
+                              #{t.zendesk_id}
+                              <svg width="9" height="9" viewBox="0 0 10 10" fill="none" className="opacity-50 group-hover:opacity-100 transition-opacity">
+                                <path d="M1.5 8.5L8.5 1.5M8.5 1.5H3.5M8.5 1.5V6.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                              </svg>
+                            </a>
+                          ) : (
+                            <span className="text-[#9BAABB] text-xs">#{t.zendesk_id}</span>
+                          )}
+                        </td>
+
+                        <td className="px-4 py-3.5 max-w-[200px]">
+                          <a href={`/dashboard/tickets/${t.zendesk_id}`} className="text-[#1E2A3B] hover:text-[#3B6EF0] transition-colors font-medium truncate block">
+                            {t.subject}
+                          </a>
+                        </td>
+
+                        <td className="px-4 py-3.5">
+                          <span className={`px-2 py-0.5 rounded-full border text-xs font-medium ${domainM.badge}`}>
+                            {domainM.label}
+                          </span>
+                        </td>
+
+                        <td className="px-4 py-3.5">
+                          <span className={`px-2 py-0.5 rounded-full border text-xs font-medium capitalize ${categoryM.badge}`}>
+                            {t.category}
+                          </span>
+                        </td>
+
+                        <td className="px-4 py-3.5">
+                          <div className="flex items-center gap-1.5">
+                            <span className={`w-2 h-2 rounded-full flex-shrink-0 ${priorityM.color}`} />
+                            <span className="text-xs text-[#6B7A99]">{priorityM.label}</span>
+                          </div>
+                        </td>
+
+                        <td className="px-4 py-3.5">
+                          <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-xs font-medium ${statusM.badge}`}>
+                            <span className={`w-1.5 h-1.5 rounded-full ${statusM.dot}`} />
+                            {statusM.label}
+                          </span>
+                        </td>
+
+                        <td className="px-4 py-3.5 text-[#6B7A99] text-xs max-w-[120px] truncate">
+                          {t.requester_name || t.requester_email}
+                        </td>
+
+                        <td className="px-4 py-3.5 text-[#6B7A99] text-xs">
+                          {t.assignee_name || <span className="text-[#D1D9E6]">—</span>}
+                        </td>
+
+                        <td className="px-4 py-3.5 text-[#9BAABB] text-xs whitespace-nowrap">
+                          {new Date(t.zendesk_created_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
+                        </td>
+
+                        <td className="px-4 py-3.5">
+                          {t.sla_breach_at ? (
+                            <span className={`text-xs font-medium ${isOverdue ? 'text-red-500' : 'text-emerald-600'}`}>
+                              {isOverdue ? '⚠ Breached' : '✓ On track'}
+                            </span>
+                          ) : (
+                            <span className="text-[#D1D9E6]">—</span>
+                          )}
+                        </td>
+
+                        <td className="px-4 py-3.5">
+                          {t.csat_score ? (
+                            <div className="flex items-center gap-1">
+                              <span className="text-base leading-none">{CSAT_EMOJI[t.csat_score]}</span>
+                              <span className="text-xs font-medium text-[#6B7A99]">{t.csat_score}/5</span>
+                            </div>
+                          ) : (
+                            <span className="text-[#D1D9E6]">—</span>
+                          )}
+                        </td>
+                      </tr>
+                    )
+                  })
+                )}
+              </tbody>
+            </table>
           </div>
 
           {/* Pagination */}
           {totalPages > 1 && (
-            <div className="flex items-center justify-between text-sm text-[#6B7A99]">
-              <span>{totalCount} tickets total</span>
-              <div className="flex gap-2">
+            <div className="flex items-center justify-between text-sm text-[#6B7A99] pb-2">
+              <span className="text-xs">{totalCount} tickets total</span>
+              <div className="flex items-center gap-2">
                 <button
                   disabled={page <= 1}
                   onClick={() => setPage((p) => p - 1)}
-                  className="px-3 py-1.5 border border-[#E5E9F2] rounded-lg hover:bg-white disabled:opacity-40"
+                  className="px-3.5 py-2 border border-[#E5E9F2] rounded-xl text-xs hover:bg-white hover:border-[#3B6EF0]/30 disabled:opacity-40 disabled:cursor-not-allowed transition-all duration-150"
                 >
-                  Previous
+                  ← Prev
                 </button>
-                <span className="px-3 py-1.5">Page {page} of {totalPages}</span>
+                <span className="px-3 py-2 text-xs font-medium">
+                  {page} / {totalPages}
+                </span>
                 <button
                   disabled={page >= totalPages}
                   onClick={() => setPage((p) => p + 1)}
-                  className="px-3 py-1.5 border border-[#E5E9F2] rounded-lg hover:bg-white disabled:opacity-40"
+                  className="px-3.5 py-2 border border-[#E5E9F2] rounded-xl text-xs hover:bg-white hover:border-[#3B6EF0]/30 disabled:opacity-40 disabled:cursor-not-allowed transition-all duration-150"
                 >
-                  Next
+                  Next →
                 </button>
               </div>
             </div>
           )}
+
+          {/* Live events toast strip */}
+          {events.length > 0 && (
+            <div className="fixed bottom-5 right-5 space-y-2 z-50">
+              {events.slice(0, 3).map((e) => (
+                <div
+                  key={e.id}
+                  className="flex items-center gap-2.5 bg-[#1A2038] text-white text-xs px-4 py-2.5 rounded-xl shadow-lg animate-slideIn"
+                >
+                  <span className={`w-2 h-2 rounded-full flex-shrink-0 ${e.type === 'INSERT' ? 'bg-emerald-400' : 'bg-blue-400'}`} />
+                  <span className="text-white/60">{e.type === 'INSERT' ? 'New' : 'Updated'}</span>
+                  <span className="font-medium truncate max-w-[180px]">{e.ticket.subject}</span>
+                </div>
+              ))}
+            </div>
+          )}
+
         </div>
       </div>
-
     </div>
   )
 }
