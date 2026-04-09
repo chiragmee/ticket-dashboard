@@ -3,6 +3,12 @@
 import { useState, useCallback, useEffect } from 'react'
 import { useTicketRealtime } from '@/hooks/useTicketRealtime'
 
+type UserProfile = {
+  role: string
+  full_name: string
+  domain_access: string
+}
+
 type Ticket = {
   id: number
   zendesk_id: number
@@ -197,6 +203,13 @@ export default function TicketDashboard({
   const [totalPages, setTotalPages] = useState(Math.ceil(initialCount / 20))
   const [loading, setLoading] = useState(false)
   const [events, setEvents] = useState<RealtimeEvent[]>([])
+  const [userProfile, setUserProfile] = useState<UserProfile | null>(null)
+
+  useEffect(() => {
+    fetch('/api/auth/profile').then(r => r.json()).then(json => {
+      if (json.profile) setUserProfile(json.profile)
+    })
+  }, [])
 
   const fetchTickets = useCallback(async () => {
     setLoading(true)
@@ -259,7 +272,7 @@ export default function TicketDashboard({
           {[
             { label: 'Dashboard', href: '/dashboard', active: true },
             { label: 'Sync', href: '/dashboard/sync', active: false },
-            { label: 'Manage Users', href: '/admin/users', active: false },
+            ...(userProfile?.role === 'admin' ? [{ label: 'Manage Users', href: '/admin/users', active: false }] : []),
           ].map((item) => (
             <a
               key={item.label}
@@ -272,6 +285,23 @@ export default function TicketDashboard({
             </a>
           ))}
         </nav>
+        <div className="p-4 border-t border-white/10">
+          {userProfile && (
+            <div className="mb-3">
+              <div className="text-white text-sm font-medium truncate">{userProfile.full_name}</div>
+              <div className="text-white/40 text-xs capitalize">{userProfile.role}</div>
+            </div>
+          )}
+          <button
+            onClick={async () => {
+              await fetch('/api/auth/logout', { method: 'POST' })
+              window.location.href = '/login'
+            }}
+            className="w-full text-left px-3 py-2 rounded-lg text-sm text-white/60 hover:text-white hover:bg-white/10 transition-colors"
+          >
+            Sign out
+          </button>
+        </div>
       </aside>
 
       {/* Main */}
