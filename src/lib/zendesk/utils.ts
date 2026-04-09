@@ -27,7 +27,11 @@ export function mapZendeskTicket(raw: Record<string, unknown>) {
     closed: 'closed',
   }
 
-  const status = statusMap[(raw.status as string)?.toLowerCase()] ?? 'open'
+  // custom_status takes priority — handles "In Progress" and other custom statuses
+  const customStatus = (raw.custom_status as string)?.toLowerCase().replace(/\s+/g, '_')
+  const baseStatus = statusMap[(raw.status as string)?.toLowerCase()] ?? 'open'
+  const validStatuses = ['open', 'pending', 'in_progress', 'resolved', 'closed']
+  const status = customStatus && validStatuses.includes(customStatus) ? customStatus : baseStatus
   const priority = (raw.priority as string)?.toLowerCase() ?? 'normal'
 
   // requester can be an object (API) or flat strings (trigger)
