@@ -24,9 +24,37 @@ export async function postTicketComment(zendeskId: number, body: string, isPubli
       Authorization: authHeader(),
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify({ ticket: { comment: { body, public: isPublic } } }),
+    body: JSON.stringify({ ticket: { comment: { body, public: isPublic, html_body: undefined } } }),
   })
-  if (!res.ok) throw new Error(`Zendesk post comment error: ${res.status}`)
+  if (!res.ok) {
+    const text = await res.text()
+    throw new Error(`Zendesk post comment error: ${res.status} ${text}`)
+  }
+  return res.json()
+}
+
+export async function updateTicketStatus(zendeskId: number, status: string) {
+  // Map our internal statuses to Zendesk base statuses
+  const statusMap: Record<string, string> = {
+    open: 'open',
+    pending: 'pending',
+    in_progress: 'open', // custom status — kept as open at base level
+    resolved: 'solved',
+    closed: 'closed',
+  }
+  const zendeskStatus = statusMap[status] ?? 'open'
+  const res = await fetch(`${base()}/tickets/${zendeskId}.json`, {
+    method: 'PUT',
+    headers: {
+      Authorization: authHeader(),
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ ticket: { status: zendeskStatus } }),
+  })
+  if (!res.ok) {
+    const text = await res.text()
+    throw new Error(`Zendesk status update error: ${res.status} ${text}`)
+  }
   return res.json()
 }
 

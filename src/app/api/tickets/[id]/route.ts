@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { getTicketComments } from '@/lib/zendesk/api'
+import { getTicketComments, updateTicketStatus } from '@/lib/zendesk/api'
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
@@ -42,4 +42,33 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
   }
 
   return NextResponse.json({ ticket, comments, role: profile?.role })
+}
+
+export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params
+
+  const supabaseUser = await createClient()
+  const { data: { user } } = await supabaseUser.auth.getUser()
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+  const admin = createAdminClient()
+  const { data: profile } = await admin
+    .from('user_profiles')
+    .select('role')
+    .eq('user_id', user.id)
+    .single()
+
+  if (profile?.role === 'client') return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+
+  const { status } = await req.json()
+  if (!status) return NextResponse.json({ error: 'Status required' }, { status: 400 })
+
+  try {
+    await updateTicketStatus(Number(id), status)
+    await admin.from('tickets').update({ status }).eq('zendesk_id', id)
+    return NextResponse.json({ ok: true })
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Failed to update status'
+    return NextResponse.json({ error: message }, { status: 500 })
+  }
 }
