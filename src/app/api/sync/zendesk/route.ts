@@ -21,7 +21,8 @@ export async function POST(req: NextRequest) {
   }
 
   const logId = logData.id
-  const startTime = Math.floor((Date.now() - 15 * 60 * 1000) / 1000)
+  // Use start_time=0 to fetch all tickets ever created
+  const startTime = 0
 
   const domain = process.env.ZENDESK_DOMAIN!
   const email = process.env.ZENDESK_EMAIL!
