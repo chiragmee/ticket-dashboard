@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { mapZendeskTicket } from '@/lib/zendesk/utils'
+import { classifyCategory, classifyDomain } from '@/lib/ai/classify'
 
 export async function POST(req: NextRequest) {
   const authHeader = req.headers.get('authorization') ?? ''
@@ -49,8 +50,21 @@ export async function POST(req: NextRequest) {
         end_of_stream: boolean
       }
 
-      const tickets = (data.tickets ?? []).map((t) =>
-        mapZendeskTicket(t as Parameters<typeof mapZendeskTicket>[0])
+      const mapped = (data.tickets ?? []).map((t) =>
+        mapZendeskTicket(t as Record<string, unknown>)
+      )
+
+      // AI classify in parallel batches of 5
+      const tickets = await Promise.all(
+        mapped.map(async (ticket) => {
+          const [aiCategory, aiDomain] = await Promise.all([
+            classifyCategory(ticket.subject, ticket.description),
+            ticket.domain === 'other'
+              ? classifyDomain(ticket.subject, ticket.description)
+              : Promise.resolve(ticket.domain),
+          ])
+          return { ...ticket, category: aiCategory, domain: aiDomain }
+        })
       )
 
       if (tickets.length > 0) {
