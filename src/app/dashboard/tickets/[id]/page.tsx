@@ -106,10 +106,10 @@ export default function TicketDetailPage() {
 
   const TERMINAL_STATUSES = ['resolved', 'closed']
 
-  const handleStatusChange = async (newStatus: string) => {
+  const handleStatusChange = async (newStatus: string, force = false) => {
     if (newStatus === currentStatus) return
-    // Block status change to resolved/closed if there's an unsent reply
-    if (TERMINAL_STATUSES.includes(newStatus) && replyBody.trim()) {
+    // Block status change to resolved/closed if there's an unsent reply (only from dropdown)
+    if (!force && TERMINAL_STATUSES.includes(newStatus) && replyBody.trim()) {
       setPostError('You have an unsent reply. Please send it before changing the status.')
       return
     }
@@ -143,7 +143,7 @@ export default function TicketDetailPage() {
     }
     setReplyBody('')
     if (resolveAfter) {
-      await handleStatusChange('resolved')
+      await handleStatusChange('resolved', true) // force = true, skip unsent check
     }
     await fetchTicket()
     setTimeout(() => conversationEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 100)
