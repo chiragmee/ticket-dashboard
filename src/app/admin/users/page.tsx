@@ -62,8 +62,8 @@ export default function UsersPage() {
     if (!res.ok) {
       setInviteError(json.error?.includes('already') ? 'This email is already registered.' : 'Could not send invite. Please try again.')
     } else {
-      setInviteMsg(`Invite sent to ${inviteForm.email}`)
       setInviteForm({ email: '', full_name: '', role: 'member', domain_access: 'krt' })
+      setShowInvite(false)
       fetchUsers()
     }
     setInviteLoading(false)
