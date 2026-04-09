@@ -25,6 +25,7 @@ type Comment = {
   public: boolean
   created_at: string
   author_id: number
+  via?: { channel: string }
 }
 
 const STATUS_COLORS: Record<string, string> = {

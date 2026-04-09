@@ -34,7 +34,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
   }
 
   // Fetch comments from Zendesk
-  let comments = []
+  let comments: Awaited<ReturnType<typeof getTicketComments>> = []
   try {
     comments = await getTicketComments(Number(id))
   } catch {
