@@ -19,7 +19,7 @@ async function getInitialData() {
       supabase.from('tickets').select('category'),
     ])
 
-  const byCategory: Record<string, number> = { bug: 0, feature: 0, query: 0, enhancement: 0, other: 0 }
+  const byCategory: Record<string, number> = { bug: 0, feature: 0, query: 0, other: 0 }
   for (const row of allCats.data ?? []) {
     const cat = row.category as string
     if (cat in byCategory) byCategory[cat]++

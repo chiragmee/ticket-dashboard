@@ -3,7 +3,7 @@ import Anthropic from '@anthropic-ai/sdk'
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 
 export async function classifyCategory(subject: string, description: string): Promise<string> {
-  const validCategories = ['bug', 'feature', 'query', 'enhancement', 'other']
+  const validCategories = ['bug', 'feature', 'query', 'other']
 
   try {
     const message = await client.messages.create({
@@ -15,16 +15,15 @@ export async function classifyCategory(subject: string, description: string): Pr
           content: `Classify this support ticket into exactly one category.
 
 Categories:
-- bug: software defect, error, crash, not working, broken
-- feature: new feature request, add functionality, would like to have
-- enhancement: improve existing functionality, make better, optimize
-- query: question, how to, help needed, information request
+- bug: software defect, error, crash, something not working, broken functionality
+- feature: new feature request, add functionality, improvement, enhancement, make better, optimize
+- query: question, how to, help needed, information request, clarification
 - other: anything that doesn't fit above
 
 Ticket subject: ${subject}
 Ticket description: ${description?.slice(0, 500) ?? ''}
 
-Reply with just the category word, nothing else.`,
+Reply with just the category word (bug/feature/query/other), nothing else.`,
         },
       ],
     })

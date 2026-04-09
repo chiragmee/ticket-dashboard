@@ -148,7 +148,6 @@ function CategoryBars({ byCategory, total }: { byCategory: Record<string, number
     bug: '#EF4444',
     feature: '#3B6EF0',
     query: '#6B7A99',
-    enhancement: '#A855F7',
     other: '#F59E0B',
   }
 
@@ -336,7 +335,7 @@ export default function TicketDashboard({
               className="border border-[#E5E9F2] rounded-lg px-3 py-1.5 text-sm bg-white text-[#1E2A3B] focus:outline-none focus:border-[#3B6EF0]"
             >
               <option value="">All Categories</option>
-              {['bug', 'feature', 'query', 'enhancement', 'other'].map((c) => (
+              {['bug', 'feature', 'query', 'other'].map((c) => (
                 <option key={c} value={c}>{c}</option>
               ))}
             </select>

@@ -21,7 +21,6 @@ export async function GET() {
     bug: 0,
     feature: 0,
     query: 0,
-    enhancement: 0,
     other: 0,
   }
 

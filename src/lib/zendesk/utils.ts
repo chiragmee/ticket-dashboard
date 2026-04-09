@@ -15,8 +15,7 @@ export function deriveDomain(subject: string, description: string, ccEmails: str
 
 export function deriveCategory(tags: string[]): string {
   if (tags.includes('bug') || tags.includes('defect')) return 'bug'
-  if (tags.includes('feature-request') || tags.includes('feature_request')) return 'feature'
-  if (tags.includes('enhancement')) return 'enhancement'
+  if (tags.includes('feature-request') || tags.includes('feature_request') || tags.includes('enhancement')) return 'feature'
   return 'query'
 }
 
