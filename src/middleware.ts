@@ -29,6 +29,7 @@ export async function middleware(request: NextRequest) {
 
   // Public routes — always accessible
   const isPublic = pathname.startsWith('/login') ||
+    pathname.startsWith('/set-password') ||
     pathname.startsWith('/api/webhooks') ||
     pathname.startsWith('/api/sync') ||
     pathname.startsWith('/api/tickets') ||

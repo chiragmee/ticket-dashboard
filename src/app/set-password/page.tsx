@@ -10,11 +10,31 @@ export default function SetPasswordPage() {
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const [isReset, setIsReset] = useState(false)
+  const [ready, setReady] = useState(false)
   const router = useRouter()
 
   useEffect(() => {
-    if (window.location.hash.includes('type=recovery')) setIsReset(true)
-  }, [])
+    const supabase = createClient()
+
+    // Handle PKCE code in query string (password reset / invite link)
+    const code = new URLSearchParams(window.location.search).get('code')
+    if (code) {
+      supabase.auth.exchangeCodeForSession(code).then(({ error }) => {
+        if (error) setError('This link has expired or is invalid. Please request a new one.')
+        else setReady(true)
+      })
+    } else if (window.location.hash.includes('type=recovery')) {
+      // Legacy implicit flow
+      setIsReset(true)
+      setReady(true)
+    } else {
+      // Already has a session (e.g. invited user landing here)
+      supabase.auth.getSession().then(({ data }) => {
+        if (data.session) setReady(true)
+        else setError('This link has expired or is invalid. Please request a new one.')
+      })
+    }
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -54,7 +74,18 @@ export default function SetPasswordPage() {
           <p className="text-sm text-[#6B7A99] mt-1">{isReset ? 'Choose a new password for your account' : 'Choose a password to activate your account'}</p>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        {!ready && !error && (
+          <div className="text-sm text-[#6B7A99] text-center py-4">Verifying link...</div>
+        )}
+
+        {error && !ready && (
+          <div className="space-y-4">
+            <div className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">{error}</div>
+            <a href="/login" className="block text-center text-sm text-[#3B6EF0] hover:underline">Back to sign in</a>
+          </div>
+        )}
+
+        {ready && <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className="block text-sm font-medium text-[#1E2A3B] mb-1.5">Password</label>
             <input
@@ -91,7 +122,7 @@ export default function SetPasswordPage() {
           >
             {loading ? 'Saving...' : 'Set password & continue'}
           </button>
-        </form>
+        </form>}
       </div>
     </div>
   )
