@@ -29,11 +29,10 @@ type Comment = {
 }
 
 const STATUS_OPTIONS = [
-  { value: 'open', label: 'Open', color: 'bg-blue-100 text-blue-700' },
-  { value: 'pending', label: 'Pending', color: 'bg-yellow-100 text-yellow-700' },
-  { value: 'in_progress', label: 'In Progress', color: 'bg-purple-100 text-purple-700' },
-  { value: 'resolved', label: 'Resolved', color: 'bg-green-100 text-green-700' },
-  { value: 'closed', label: 'Closed', color: 'bg-gray-100 text-gray-600' },
+  { value: 'open', label: 'Open', dot: 'bg-red-500', badge: 'bg-red-100 text-red-700' },
+  { value: 'in_progress', label: 'In Progress', dot: 'bg-orange-500', badge: 'bg-orange-100 text-orange-700' },
+  { value: 'pending', label: 'Pending', dot: 'bg-blue-500', badge: 'bg-blue-100 text-blue-700' },
+  { value: 'resolved', label: 'Resolved', dot: 'bg-gray-400', badge: 'bg-gray-100 text-gray-600' },
 ]
 
 const PRIORITY_COLORS: Record<string, string> = {
@@ -84,6 +83,8 @@ export default function TicketDetailPage() {
 
   const [currentStatus, setCurrentStatus] = useState('')
   const [statusUpdating, setStatusUpdating] = useState(false)
+  const [submitAsStatus, setSubmitAsStatus] = useState('')
+  const [showStatusDropdown, setShowStatusDropdown] = useState(false)
 
   const conversationEndRef = useRef<HTMLDivElement>(null)
 
@@ -99,12 +100,13 @@ export default function TicketDetailPage() {
     setComments(json.comments ?? [])
     setRole(json.role)
     setCurrentStatus(json.ticket.status)
+    setSubmitAsStatus(json.ticket.status)
     setLoading(false)
   }, [id])
 
   useEffect(() => { fetchTicket() }, [fetchTicket])
 
-  const TERMINAL_STATUSES = ['resolved', 'closed']
+  const TERMINAL_STATUSES = ['resolved']
 
   const handleStatusChange = async (newStatus: string, force = false) => {
     if (newStatus === currentStatus) return
@@ -126,7 +128,7 @@ export default function TicketDetailPage() {
     setStatusUpdating(false)
   }
 
-  const handlePost = async (resolveAfter = false) => {
+  const handlePost = async () => {
     if (!replyBody.trim()) return
     setPosting(true)
     setPostError('')
@@ -142,16 +144,16 @@ export default function TicketDetailPage() {
       return
     }
     setReplyBody('')
-    if (resolveAfter) {
-      await handleStatusChange('resolved', true) // force = true, skip unsent check
+    if (submitAsStatus !== currentStatus) {
+      await handleStatusChange(submitAsStatus, true)
     }
     await fetchTicket()
     setTimeout(() => conversationEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 100)
     setPosting(false)
   }
 
-  const canReply = (role === 'admin' || role === 'member') && ticket?.status !== 'closed'
-  const currentStatusOption = STATUS_OPTIONS.find(s => s.value === currentStatus)
+  const canReply = (role === 'admin' || role === 'member') && ticket?.status !== 'resolved'
+  const currentStatusOption = STATUS_OPTIONS.find(s => s.value === currentStatus) ?? STATUS_OPTIONS[0]
 
   if (loading) {
     return (
@@ -190,26 +192,11 @@ export default function TicketDetailPage() {
         <span className="text-sm text-[#6B7A99] font-mono">#{ticket.zendesk_id}</span>
         <span className="text-sm font-medium text-[#1E2A3B] truncate flex-1">{ticket.subject}</span>
 
-        {/* Status changer */}
-        {canReply ? (
-          <div className="relative flex items-center gap-2">
-            {statusUpdating && <span className="text-xs text-[#9BAABB]">Saving...</span>}
-            <select
-              value={currentStatus}
-              onChange={(e) => handleStatusChange(e.target.value)}
-              disabled={statusUpdating}
-              className={`text-xs font-medium px-3 py-1.5 rounded-lg border-0 cursor-pointer focus:outline-none focus:ring-2 focus:ring-[#3B6EF0] ${currentStatusOption?.color ?? 'bg-gray-100 text-gray-600'}`}
-            >
-              {STATUS_OPTIONS.map(s => (
-                <option key={s.value} value={s.value}>{s.label}</option>
-              ))}
-            </select>
-          </div>
-        ) : (
-          <span className={`text-xs font-medium px-3 py-1.5 rounded-lg ${currentStatusOption?.color ?? 'bg-gray-100 text-gray-600'}`}>
-            {currentStatusOption?.label ?? currentStatus}
-          </span>
-        )}
+        {/* Current status badge — read only in header */}
+        <span className={`text-xs font-medium px-3 py-1.5 rounded-lg flex items-center gap-1.5 ${currentStatusOption?.badge ?? 'bg-gray-100 text-gray-600'}`}>
+          <span className={`w-2 h-2 rounded-full ${currentStatusOption?.dot ?? 'bg-gray-400'}`} />
+          {currentStatusOption?.label ?? currentStatus}
+        </span>
       </header>
 
       {/* Main two-panel layout */}
@@ -346,44 +333,63 @@ export default function TicketDetailPage() {
                   Internal note
                 </button>
               </div>
-              <div className="flex gap-3 items-end">
-                <textarea
-                  value={replyBody}
-                  onChange={(e) => setReplyBody(e.target.value)}
-                  onKeyDown={(e) => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) handlePost() }}
-                  placeholder={isPublic ? 'Write a reply to the customer... (⌘Enter to send)' : 'Write an internal note...'}
-                  rows={3}
-                  className={`flex-1 border rounded-xl px-3 py-2.5 text-sm focus:outline-none resize-none ${
-                    !isPublic ? 'border-amber-200 bg-amber-50 focus:border-amber-400' : 'border-[#E5E9F2] focus:border-[#3B6EF0]'
-                  }`}
-                />
-                <div className="flex flex-col gap-2 flex-shrink-0">
+              <textarea
+                value={replyBody}
+                onChange={(e) => setReplyBody(e.target.value)}
+                onKeyDown={(e) => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) handlePost() }}
+                placeholder={isPublic ? 'Write a reply to the customer... (⌘Enter to send)' : 'Write an internal note...'}
+                rows={3}
+                className={`w-full border rounded-xl px-3 py-2.5 text-sm focus:outline-none resize-none mb-3 ${
+                  !isPublic ? 'border-amber-200 bg-amber-50 focus:border-amber-400' : 'border-[#E5E9F2] focus:border-[#3B6EF0]'
+                }`}
+              />
+
+              {/* Zendesk-style Submit button */}
+              <div className="flex items-center justify-between">
+                <div>{postError && <span className="text-xs text-red-600">{postError}</span>}</div>
+                <div className="relative flex items-center">
+                  {/* Main submit button */}
                   <button
-                    onClick={() => handlePost(false)}
+                    onClick={handlePost}
                     disabled={posting || !replyBody.trim()}
-                    className="px-4 py-2.5 bg-[#3B6EF0] text-white rounded-xl text-sm font-medium hover:bg-blue-700 disabled:opacity-50 transition-colors"
+                    className="px-5 py-2.5 bg-[#1A2038] text-white text-sm font-semibold rounded-l-xl hover:bg-[#2a3250] disabled:opacity-50 transition-colors"
                   >
-                    {posting ? 'Sending...' : isPublic ? 'Send' : 'Add note'}
+                    {posting ? 'Submitting...' : `Submit as ${STATUS_OPTIONS.find(s => s.value === submitAsStatus)?.label ?? submitAsStatus}`}
                   </button>
-                  {isPublic && currentStatus !== 'resolved' && currentStatus !== 'closed' && (
-                    <button
-                      onClick={() => handlePost(true)}
-                      disabled={posting || !replyBody.trim()}
-                      className="px-4 py-2.5 bg-green-600 text-white rounded-xl text-sm font-medium hover:bg-green-700 disabled:opacity-50 transition-colors whitespace-nowrap"
-                    >
-                      Send & Resolve
-                    </button>
+                  {/* Caret to open status picker */}
+                  <button
+                    onClick={() => setShowStatusDropdown(v => !v)}
+                    className="px-2.5 py-2.5 bg-[#1A2038] text-white rounded-r-xl hover:bg-[#2a3250] border-l border-white/20 transition-colors"
+                  >
+                    <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+                      <path d="M2 4L6 8L10 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
+                  </button>
+
+                  {/* Status dropdown */}
+                  {showStatusDropdown && (
+                    <div className="absolute bottom-12 right-0 bg-white border border-[#E5E9F2] rounded-xl shadow-lg py-1 w-44 z-10">
+                      {STATUS_OPTIONS.map(s => (
+                        <button
+                          key={s.value}
+                          onClick={() => { setSubmitAsStatus(s.value); setShowStatusDropdown(false) }}
+                          className={`w-full flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-[#F4F6FB] transition-colors ${submitAsStatus === s.value ? 'font-semibold text-[#1E2A3B]' : 'text-[#4A5568]'}`}
+                        >
+                          <span className={`w-3 h-3 rounded-sm flex-shrink-0 ${s.dot}`} />
+                          {s.label}
+                        </button>
+                      ))}
+                    </div>
                   )}
                 </div>
               </div>
-              {postError && <div className="mt-2 text-xs text-red-600">{postError}</div>}
             </div>
           )}
 
           {!canReply && (
             <div className="border-t border-[#E5E9F2] bg-[#F4F6FB] px-5 py-3 text-xs text-[#9BAABB] text-center flex-shrink-0">
-              {ticket?.status === 'closed'
-                ? 'This ticket is closed and can no longer be updated.'
+              {ticket?.status === 'resolved'
+                ? 'This ticket is resolved. Reopen it in Zendesk to add more replies.'
                 : 'You have view-only access to this ticket.'}
             </div>
           )}
