@@ -405,7 +405,23 @@ export default function TicketDashboard({
                 <tbody className="divide-y divide-[#E5E9F2]">
                   {tickets.map((t) => (
                     <tr key={t.id} className="hover:bg-[#F4F6FB] transition-colors">
-                      <td className="px-4 py-3 text-[#6B7A99] font-mono">#{t.zendesk_id}</td>
+                      <td className="px-4 py-3 font-mono">
+                        {userProfile?.role === 'admin' || userProfile?.role === 'member' ? (
+                          <a
+                            href={`https://${process.env.NEXT_PUBLIC_ZENDESK_SUBDOMAIN ?? 'selfemployed-31120'}.zendesk.com/agent/tickets/${t.zendesk_id}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1 text-[#3B6EF0] hover:underline"
+                          >
+                            #{t.zendesk_id}
+                            <svg width="10" height="10" viewBox="0 0 10 10" fill="none" className="opacity-60">
+                              <path d="M1.5 8.5L8.5 1.5M8.5 1.5H3.5M8.5 1.5V6.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                            </svg>
+                          </a>
+                        ) : (
+                          <span className="text-[#6B7A99]">#{t.zendesk_id}</span>
+                        )}
+                      </td>
                       <td className="px-4 py-3 text-[#1E2A3B] max-w-[200px] truncate">{t.subject}</td>
                       <td className="px-4 py-3">
                         <span className={`px-2 py-0.5 rounded text-xs font-medium ${
