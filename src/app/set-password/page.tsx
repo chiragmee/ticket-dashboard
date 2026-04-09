@@ -15,24 +15,17 @@ export default function SetPasswordPage() {
 
   useEffect(() => {
     const supabase = createClient()
-
-    // Handle PKCE code in query string (password reset / invite link)
-    const code = new URLSearchParams(window.location.search).get('code')
-    if (code) {
-      supabase.auth.exchangeCodeForSession(code).then(({ error }) => {
-        if (error) setError('This link has expired or is invalid. Please request a new one.')
-        else setReady(true)
-      })
-    } else if (window.location.hash.includes('type=recovery')) {
-      // Legacy implicit flow
+    // By the time we land here, /auth/callback has already exchanged the code
+    supabase.auth.getSession().then(({ data }) => {
+      if (data.session) {
+        setReady(true)
+      } else {
+        setError('This link has expired or is invalid. Please request a new one.')
+      }
+    })
+    // Detect password reset vs invite
+    if (new URLSearchParams(window.location.search).get('type') === 'recovery') {
       setIsReset(true)
-      setReady(true)
-    } else {
-      // Already has a session (e.g. invited user landing here)
-      supabase.auth.getSession().then(({ data }) => {
-        if (data.session) setReady(true)
-        else setError('This link has expired or is invalid. Please request a new one.')
-      })
     }
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 

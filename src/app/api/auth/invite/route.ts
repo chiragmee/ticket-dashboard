@@ -27,7 +27,7 @@ export async function POST(req: NextRequest) {
 
   // Invite user via Supabase Auth
   const { data: inviteData, error: inviteError } = await admin.auth.admin.inviteUserByEmail(email, {
-    redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL ?? 'https://ticket-dashboard-teal.vercel.app'}/set-password`,
+    redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL ?? 'https://ticket-dashboard-teal.vercel.app'}/auth/callback?next=/set-password`,
   })
 
   if (inviteError) {
