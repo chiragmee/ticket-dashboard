@@ -318,6 +318,7 @@ export default function TicketDashboard({
           {[
             { label: 'Dashboard', href: '/dashboard', active: true },
             ...(userProfile?.role === 'admin' ? [
+              { label: 'SLA Config', href: '/dashboard/sla', active: false },
               { label: 'Sync', href: '/dashboard/sync', active: false },
               { label: 'Manage Users', href: '/admin/users', active: false },
             ] : []),

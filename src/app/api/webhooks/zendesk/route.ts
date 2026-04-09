@@ -15,7 +15,16 @@ export async function POST(req: NextRequest) {
   }
 
   const raw = (payload.ticket ?? payload) as Record<string, unknown>
-  const ticket = mapZendeskTicket(raw)
+
+  // Load SLA config from DB (fall back to defaults silently)
+  const supabaseAdmin = createAdminClient()
+  let slaConfig: Record<string, number> = {}
+  try {
+    const { data: slaRows } = await supabaseAdmin.from('sla_config').select('priority, hours')
+    slaConfig = Object.fromEntries((slaRows ?? []).map((r: { priority: string; hours: number }) => [r.priority, r.hours]))
+  } catch { /* use defaults */ }
+
+  const ticket = mapZendeskTicket(raw, slaConfig)
 
   // AI classification — runs in parallel for speed
   const [aiCategory, aiDomain] = await Promise.all([
@@ -28,7 +37,7 @@ export async function POST(req: NextRequest) {
   ticket.category = aiCategory
   ticket.domain = aiDomain
 
-  const supabase = createAdminClient()
+  const supabase = supabaseAdmin
 
   // Check if ticket already exists to detect new vs update
   const { data: existing } = await supabase

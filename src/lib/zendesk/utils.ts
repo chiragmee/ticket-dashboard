@@ -1,13 +1,17 @@
-// SLA resolution time in hours by priority
-const SLA_HOURS: Record<string, number> = {
+// Default SLA fallback (used when DB config isn't available)
+export const DEFAULT_SLA_HOURS: Record<string, number> = {
   urgent: 4,
   high: 8,
   normal: 24,
   low: 48,
 }
 
-export function computeSlaBreachAt(priority: string, createdAt: string): string {
-  const hours = SLA_HOURS[priority] ?? 24
+export function computeSlaBreachAt(
+  priority: string,
+  createdAt: string,
+  config: Record<string, number> = DEFAULT_SLA_HOURS
+): string {
+  const hours = config[priority] ?? DEFAULT_SLA_HOURS[priority] ?? 24
   const d = new Date(createdAt)
   d.setHours(d.getHours() + hours)
   return d.toISOString()
@@ -34,7 +38,7 @@ export function deriveCategory(tags: string[]): string {
   return 'query'
 }
 
-export function mapZendeskTicket(raw: Record<string, unknown>) {
+export function mapZendeskTicket(raw: Record<string, unknown>, slaConfig: Record<string, number> = {}) {
   // Support both Zendesk API format and Trigger webhook format
   const id = Number(raw.id)
   const subject = (raw.subject ?? raw.title ?? '(no subject)') as string
@@ -90,7 +94,7 @@ export function mapZendeskTicket(raw: Record<string, unknown>) {
     requester_org: '',
     assignee_name: assigneeName,
     tags,
-    sla_breach_at: ((raw.due_at as string | null) ?? computeSlaBreachAt(priority, createdAt)),
+    sla_breach_at: ((raw.due_at as string | null) ?? computeSlaBreachAt(priority, createdAt, slaConfig)),
     zendesk_created_at: createdAt,
     zendesk_updated_at: updatedAt,
     synced_at: new Date().toISOString(),
