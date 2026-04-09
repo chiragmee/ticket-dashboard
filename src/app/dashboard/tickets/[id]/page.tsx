@@ -139,7 +139,7 @@ export default function TicketDetailPage() {
     setPosting(false)
   }
 
-  const canReply = role === 'admin' || role === 'member'
+  const canReply = (role === 'admin' || role === 'member') && ticket?.status !== 'closed'
   const currentStatusOption = STATUS_OPTIONS.find(s => s.value === currentStatus)
 
   if (loading) {
@@ -360,7 +360,9 @@ export default function TicketDetailPage() {
 
           {!canReply && (
             <div className="border-t border-[#E5E9F2] bg-[#F4F6FB] px-5 py-3 text-xs text-[#9BAABB] text-center flex-shrink-0">
-              You have view-only access to this ticket.
+              {ticket?.status === 'closed'
+                ? 'This ticket is closed and can no longer be updated.'
+                : 'You have view-only access to this ticket.'}
             </div>
           )}
         </div>
