@@ -8,7 +8,7 @@ async function getInitialData() {
 
   const [ticketsResult, totalResult, openResult, inProgressResult, resolvedResult, overdueResult, allCats, csatData] =
     await Promise.all([
-      supabase.from('tickets').select('*').order('zendesk_updated_at', { ascending: false }).range(0, 19),
+      supabase.from('tickets').select('*').order('zendesk_id', { ascending: false }).range(0, 19),
       supabase.from('tickets').select('*', { count: 'exact', head: true }),
       supabase.from('tickets').select('*', { count: 'exact', head: true }).eq('status', 'open'),
       supabase.from('tickets').select('*', { count: 'exact', head: true }).eq('status', 'in_progress'),

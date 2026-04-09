@@ -45,8 +45,17 @@ export async function GET(req: NextRequest) {
     )
   }
 
+  const dateFrom = searchParams.get('date_from')
+  const dateTo = searchParams.get('date_to')
+  if (dateFrom) query = query.gte('zendesk_created_at', new Date(dateFrom).toISOString())
+  if (dateTo) {
+    const end = new Date(dateTo)
+    end.setHours(23, 59, 59, 999)
+    query = query.lte('zendesk_created_at', end.toISOString())
+  }
+
   query = query
-    .order('zendesk_updated_at', { ascending: false })
+    .order('zendesk_id', { ascending: false })
     .range(offset, offset + pageSize - 1)
 
   const { data, error, count } = await query

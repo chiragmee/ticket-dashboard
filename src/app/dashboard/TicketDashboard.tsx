@@ -214,6 +214,8 @@ export default function TicketDashboard({
   const [statusFilter, setStatusFilter] = useState('')
   const [categoryFilter, setCategoryFilter] = useState('')
   const [domainFilter, setDomainFilter] = useState('')
+  const [dateFrom, setDateFrom] = useState('')
+  const [dateTo, setDateTo] = useState('')
   const [search, setSearch] = useState('')
   const [page, setPage] = useState(1)
   const [totalPages, setTotalPages] = useState(Math.ceil(initialCount / 20))
@@ -235,6 +237,8 @@ export default function TicketDashboard({
     if (statusFilter) params.set('status', statusFilter)
     if (categoryFilter) params.set('category', categoryFilter)
     if (domainFilter) params.set('domain', domainFilter)
+    if (dateFrom) params.set('date_from', dateFrom)
+    if (dateTo) params.set('date_to', dateTo)
     if (search) params.set('search', search)
 
     const res = await fetch(`/api/tickets?${params}`)
@@ -243,7 +247,7 @@ export default function TicketDashboard({
     setTotalCount(json.count ?? 0)
     setTotalPages(json.totalPages ?? 1)
     setLoading(false)
-  }, [page, statusFilter, categoryFilter, domainFilter, search])
+  }, [page, statusFilter, categoryFilter, domainFilter, dateFrom, dateTo, search])
 
   useEffect(() => { fetchTickets() }, [fetchTickets])
 
@@ -429,6 +433,7 @@ export default function TicketDashboard({
 
           {/* Filters */}
           <div className="flex items-center gap-3 flex-wrap">
+            {/* Status tabs */}
             <div className="flex gap-1 bg-white border border-[#E5E9F2] rounded-xl p-1 shadow-sm">
               {['', 'open', 'in_progress', 'resolved', 'closed'].map((s) => (
                 <button
@@ -468,9 +473,32 @@ export default function TicketDashboard({
               <option value="other">Other</option>
             </select>
 
-            {(statusFilter || categoryFilter || domainFilter || search) && (
+            {/* Date range */}
+            <div className="flex items-center gap-2 bg-white border border-[#E5E9F2] rounded-xl px-3 py-1.5 shadow-sm">
+              <svg width="12" height="12" viewBox="0 0 14 14" fill="none" className="text-[#9BAABB] flex-shrink-0">
+                <rect x="1" y="2" width="12" height="11" rx="1.5" stroke="currentColor" strokeWidth="1.3"/>
+                <path d="M4 1v2M10 1v2M1 5h12" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/>
+              </svg>
+              <input
+                type="date"
+                value={dateFrom}
+                onChange={(e) => { setDateFrom(e.target.value); setPage(1) }}
+                className="text-xs text-[#1E2A3B] bg-transparent focus:outline-none w-28 cursor-pointer"
+                title="From date"
+              />
+              <span className="text-[#D1D9E6] text-xs">→</span>
+              <input
+                type="date"
+                value={dateTo}
+                onChange={(e) => { setDateTo(e.target.value); setPage(1) }}
+                className="text-xs text-[#1E2A3B] bg-transparent focus:outline-none w-28 cursor-pointer"
+                title="To date"
+              />
+            </div>
+
+            {(statusFilter || categoryFilter || domainFilter || search || dateFrom || dateTo) && (
               <button
-                onClick={() => { setStatusFilter(''); setCategoryFilter(''); setDomainFilter(''); setSearch(''); setPage(1) }}
+                onClick={() => { setStatusFilter(''); setCategoryFilter(''); setDomainFilter(''); setDateFrom(''); setDateTo(''); setSearch(''); setPage(1) }}
                 className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-medium text-[#6B7A99] hover:text-red-600 hover:bg-red-50 border border-[#E5E9F2] hover:border-red-200 transition-all duration-150"
               >
                 <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M1 1l8 8M9 1L1 9" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
@@ -537,9 +565,15 @@ export default function TicketDashboard({
                           )}
                         </td>
 
-                        <td className="px-4 py-3.5 max-w-[200px]">
-                          <a href={`/dashboard/tickets/${t.zendesk_id}`} className="text-[#1E2A3B] hover:text-[#3B6EF0] transition-colors font-medium truncate block">
-                            {t.subject}
+                        <td className="px-4 py-3.5 max-w-[220px]">
+                          <a
+                            href={`/dashboard/tickets/${t.zendesk_id}`}
+                            className="group/sub flex items-center gap-1.5 text-[#1E2A3B] hover:text-[#3B6EF0] transition-colors"
+                          >
+                            <span className="font-medium truncate group-hover/sub:underline underline-offset-2">{t.subject}</span>
+                            <svg width="10" height="10" viewBox="0 0 10 10" fill="none" className="flex-shrink-0 opacity-0 group-hover/sub:opacity-100 transition-opacity text-[#3B6EF0]">
+                              <path d="M1.5 8.5L8.5 1.5M8.5 1.5H3.5M8.5 1.5V6.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                            </svg>
                           </a>
                         </td>
 
