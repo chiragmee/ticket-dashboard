@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic'
+
 import TicketDashboard from './TicketDashboard'
 import { createAdminClient } from '@/lib/supabase/admin'
 
