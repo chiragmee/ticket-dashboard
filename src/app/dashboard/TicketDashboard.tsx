@@ -271,8 +271,10 @@ export default function TicketDashboard({
         <nav className="p-4 space-y-1 flex-1">
           {[
             { label: 'Dashboard', href: '/dashboard', active: true },
-            { label: 'Sync', href: '/dashboard/sync', active: false },
-            ...(userProfile?.role === 'admin' ? [{ label: 'Manage Users', href: '/admin/users', active: false }] : []),
+            ...(userProfile?.role === 'admin' ? [
+              { label: 'Sync', href: '/dashboard/sync', active: false },
+              { label: 'Manage Users', href: '/admin/users', active: false },
+            ] : []),
           ].map((item) => (
             <a
               key={item.label}

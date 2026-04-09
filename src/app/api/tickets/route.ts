@@ -1,7 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 
 export async function GET(req: NextRequest) {
+  // Get current user's profile for domain-scoped access
+  const supabaseUser = await createClient()
+  const { data: { user } } = await supabaseUser.auth.getUser()
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+  const admin = createAdminClient()
+  const { data: profile } = await admin
+    .from('user_profiles')
+    .select('role, domain_access')
+    .eq('user_id', user.id)
+    .single()
+
   const { searchParams } = new URL(req.url)
   const status = searchParams.get('status')
   const category = searchParams.get('category')
@@ -12,12 +25,19 @@ export async function GET(req: NextRequest) {
   const pageSize = Math.min(100, Math.max(1, parseInt(searchParams.get('pageSize') ?? '20')))
   const offset = (page - 1) * pageSize
 
-  const supabase = createAdminClient()
-  let query = supabase.from('tickets').select('*', { count: 'exact' })
+  let query = admin.from('tickets').select('*', { count: 'exact' })
+
+  // Non-admin users only see their domain's tickets
+  const isAdmin = profile?.role === 'admin'
+  const userDomain = profile?.domain_access
+  if (!isAdmin && userDomain && userDomain !== 'all') {
+    query = query.eq('domain', userDomain)
+  } else if (domain) {
+    query = query.eq('domain', domain)
+  }
 
   if (status) query = query.eq('status', status)
   if (category) query = query.eq('category', category)
-  if (domain) query = query.eq('domain', domain)
   if (org) query = query.eq('requester_org', org)
   if (search) {
     query = query.or(

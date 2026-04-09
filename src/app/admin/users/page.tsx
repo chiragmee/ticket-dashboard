@@ -39,6 +39,10 @@ export default function UsersPage() {
   const fetchUsers = useCallback(async () => {
     setLoading(true)
     const res = await fetch('/api/admin/users')
+    if (res.status === 403) {
+      window.location.href = '/dashboard'
+      return
+    }
     const json = await res.json()
     setUsers(json.data ?? [])
     setLoading(false)
