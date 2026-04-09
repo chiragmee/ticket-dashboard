@@ -33,12 +33,7 @@ export default function SyncPage() {
   const runSync = async () => {
     setSyncing(true)
     setResult(null)
-    const res = await fetch('/api/sync/zendesk', {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY}`,
-      },
-    })
+    const res = await fetch('/api/sync/trigger', { method: 'POST' })
     const json = await res.json()
     setResult(json)
     setSyncing(false)
