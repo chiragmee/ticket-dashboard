@@ -104,8 +104,15 @@ export default function TicketDetailPage() {
 
   useEffect(() => { fetchTicket() }, [fetchTicket])
 
+  const TERMINAL_STATUSES = ['resolved', 'closed']
+
   const handleStatusChange = async (newStatus: string) => {
     if (newStatus === currentStatus) return
+    // Block status change to resolved/closed if there's an unsent reply
+    if (TERMINAL_STATUSES.includes(newStatus) && replyBody.trim()) {
+      setPostError('You have an unsent reply. Please send it before changing the status.')
+      return
+    }
     setStatusUpdating(true)
     const res = await fetch(`/api/tickets/${id}`, {
       method: 'PATCH',
@@ -119,7 +126,7 @@ export default function TicketDetailPage() {
     setStatusUpdating(false)
   }
 
-  const handlePost = async () => {
+  const handlePost = async (resolveAfter = false) => {
     if (!replyBody.trim()) return
     setPosting(true)
     setPostError('')
@@ -131,11 +138,15 @@ export default function TicketDetailPage() {
     if (!res.ok) {
       const json = await res.json()
       setPostError(json.error ?? 'Failed to post. Please try again.')
-    } else {
-      setReplyBody('')
-      await fetchTicket()
-      setTimeout(() => conversationEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 100)
+      setPosting(false)
+      return
     }
+    setReplyBody('')
+    if (resolveAfter) {
+      await handleStatusChange('resolved')
+    }
+    await fetchTicket()
+    setTimeout(() => conversationEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 100)
     setPosting(false)
   }
 
@@ -346,13 +357,24 @@ export default function TicketDetailPage() {
                     !isPublic ? 'border-amber-200 bg-amber-50 focus:border-amber-400' : 'border-[#E5E9F2] focus:border-[#3B6EF0]'
                   }`}
                 />
-                <button
-                  onClick={handlePost}
-                  disabled={posting || !replyBody.trim()}
-                  className="px-4 py-2.5 bg-[#3B6EF0] text-white rounded-xl text-sm font-medium hover:bg-blue-700 disabled:opacity-50 transition-colors flex-shrink-0"
-                >
-                  {posting ? 'Sending...' : isPublic ? 'Send' : 'Add note'}
-                </button>
+                <div className="flex flex-col gap-2 flex-shrink-0">
+                  <button
+                    onClick={() => handlePost(false)}
+                    disabled={posting || !replyBody.trim()}
+                    className="px-4 py-2.5 bg-[#3B6EF0] text-white rounded-xl text-sm font-medium hover:bg-blue-700 disabled:opacity-50 transition-colors"
+                  >
+                    {posting ? 'Sending...' : isPublic ? 'Send' : 'Add note'}
+                  </button>
+                  {isPublic && currentStatus !== 'resolved' && currentStatus !== 'closed' && (
+                    <button
+                      onClick={() => handlePost(true)}
+                      disabled={posting || !replyBody.trim()}
+                      className="px-4 py-2.5 bg-green-600 text-white rounded-xl text-sm font-medium hover:bg-green-700 disabled:opacity-50 transition-colors whitespace-nowrap"
+                    >
+                      Send & Resolve
+                    </button>
+                  )}
+                </div>
               </div>
               {postError && <div className="mt-2 text-xs text-red-600">{postError}</div>}
             </div>
