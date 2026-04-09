@@ -445,31 +445,6 @@ export default function TicketDashboard({
         </div>
       </div>
 
-      {/* Live Activity Feed */}
-      <div className="fixed bottom-6 right-6 w-72 bg-white rounded-xl border border-[#E5E9F2] shadow-lg overflow-hidden">
-        <div className="px-4 py-3 border-b border-[#E5E9F2] flex items-center justify-between">
-          <span className="text-sm font-semibold text-[#1E2A3B]">Live Activity</span>
-          <span className={`w-2 h-2 rounded-full ${isConnected ? 'bg-green-500 animate-pulse' : 'bg-gray-300'}`} />
-        </div>
-        <div className="divide-y divide-[#E5E9F2] max-h-64 overflow-y-auto">
-          {events.length === 0 ? (
-            <div className="px-4 py-6 text-center text-xs text-[#6B7A99]">Waiting for live events...</div>
-          ) : (
-            events.map((ev) => (
-              <div key={ev.id} className="px-4 py-2">
-                <div className="flex items-center gap-2">
-                  <span className={`text-xs font-medium px-1.5 py-0.5 rounded ${ev.type === 'INSERT' ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'}`}>
-                    {ev.type === 'INSERT' ? 'New' : 'Updated'}
-                  </span>
-                  <span className="text-xs text-[#6B7A99]">#{ev.ticket.zendesk_id}</span>
-                </div>
-                <div className="text-xs text-[#1E2A3B] mt-1 truncate">{ev.ticket.subject}</div>
-                <div className="text-xs text-[#6B7A99] mt-0.5">{ev.timestamp.toLocaleTimeString()}</div>
-              </div>
-            ))
-          )}
-        </div>
-      </div>
     </div>
   )
 }
