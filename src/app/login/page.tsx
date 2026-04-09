@@ -20,7 +20,13 @@ export default function LoginPage() {
     const { error } = await supabase.auth.signInWithPassword({ email, password })
 
     if (error) {
-      setError(error.message)
+      if (error.message.toLowerCase().includes('invalid') || error.message.toLowerCase().includes('credentials')) {
+        setError('Incorrect email or password. Please try again.')
+      } else if (error.message.toLowerCase().includes('email')) {
+        setError('Please enter a valid email address.')
+      } else {
+        setError('Something went wrong. Please try again in a moment.')
+      }
       setLoading(false)
       return
     }
