@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { mapZendeskTicket } from '@/lib/zendesk/utils'
 import { classifyCategory, classifyDomain } from '@/lib/ai/classify'
+import { sendAcknowledgment, sendResolutionEmail } from '@/lib/email'
 
 export async function POST(req: NextRequest) {
   const rawBody = await req.text()
@@ -28,6 +29,19 @@ export async function POST(req: NextRequest) {
   ticket.domain = aiDomain
 
   const supabase = createAdminClient()
+
+  // Check if ticket already exists to detect new vs update
+  const { data: existing } = await supabase
+    .from('tickets')
+    .select('zendesk_id, status')
+    .eq('zendesk_id', ticket.zendesk_id)
+    .single()
+
+  const isNew = !existing
+  const justResolved = !isNew &&
+    existing.status !== ticket.status &&
+    (ticket.status === 'resolved' || ticket.status === 'closed')
+
   const { error } = await supabase
     .from('tickets')
     .upsert(ticket, { onConflict: 'zendesk_id', ignoreDuplicates: false })
@@ -35,6 +49,28 @@ export async function POST(req: NextRequest) {
   if (error) {
     console.error('Supabase upsert error:', error)
     return NextResponse.json({ error: 'DB error' }, { status: 500 })
+  }
+
+  // Send emails (fire-and-forget, don't block webhook response)
+  if (ticket.requester_email) {
+    if (isNew) {
+      sendAcknowledgment({
+        to: ticket.requester_email,
+        requesterName: ticket.requester_name || 'there',
+        ticketId: ticket.zendesk_id,
+        subject: ticket.subject,
+        category: ticket.category,
+      }).catch(console.error)
+    }
+
+    if (justResolved) {
+      sendResolutionEmail({
+        to: ticket.requester_email,
+        requesterName: ticket.requester_name || 'there',
+        ticketId: ticket.zendesk_id,
+        subject: ticket.subject,
+      }).catch(console.error)
+    }
   }
 
   return NextResponse.json({ ok: true }, { status: 200 })

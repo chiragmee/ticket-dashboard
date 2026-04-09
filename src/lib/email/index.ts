@@ -1,0 +1,72 @@
+import { Resend } from 'resend'
+import { acknowledgmentEmail, resolutionEmail, slaBreachEmail } from './templates'
+
+const resend = new Resend(process.env.RESEND_API_KEY)
+const FROM = 'TicketView <onboarding@resend.dev>'
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://ticket-dashboard-teal.vercel.app'
+
+export async function sendAcknowledgment({
+  to,
+  requesterName,
+  ticketId,
+  subject,
+  category,
+}: {
+  to: string
+  requesterName: string
+  ticketId: number
+  subject: string
+  category: string
+}) {
+  return resend.emails.send({
+    from: FROM,
+    to,
+    subject: `[#${ticketId}] We've received your request — TicketView`,
+    html: acknowledgmentEmail({ requesterName, ticketId, subject, category }),
+  })
+}
+
+export async function sendResolutionEmail({
+  to,
+  requesterName,
+  ticketId,
+  subject,
+}: {
+  to: string
+  requesterName: string
+  ticketId: number
+  subject: string
+}) {
+  const csatUrl = `${SITE_URL}/api/csat/${ticketId}`
+  return resend.emails.send({
+    from: FROM,
+    to,
+    subject: `[#${ticketId}] Your ticket has been resolved — How did we do?`,
+    html: resolutionEmail({ requesterName, ticketId, subject, csatUrl }),
+  })
+}
+
+export async function sendSlaBreachAlert({
+  to,
+  ticketId,
+  subject,
+  requesterEmail,
+  category,
+  assigneeName,
+  breachedAt,
+}: {
+  to: string[]
+  ticketId: number
+  subject: string
+  requesterEmail: string
+  category: string
+  assigneeName: string
+  breachedAt: string
+}) {
+  return resend.emails.send({
+    from: FROM,
+    to,
+    subject: `⚠ SLA Breach — Ticket #${ticketId} needs immediate attention`,
+    html: slaBreachEmail({ ticketId, subject, requesterEmail, category, assigneeName, breachedAt }),
+  })
+}

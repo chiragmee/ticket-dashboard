@@ -31,6 +31,8 @@ export async function middleware(request: NextRequest) {
   const isPublic = pathname.startsWith('/login') ||
     pathname.startsWith('/set-password') ||
     pathname.startsWith('/auth/callback') ||
+    pathname.startsWith('/csat') ||
+    pathname.startsWith('/api/csat') ||
     pathname.startsWith('/api/webhooks') ||
     pathname.startsWith('/api/sync') ||
     pathname.startsWith('/api/tickets') ||
