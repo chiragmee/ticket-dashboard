@@ -10,6 +10,7 @@ type Ticket = {
   status: string
   priority: string
   category: string
+  domain: string
   requester_name: string
   requester_email: string
   assignee_name: string
@@ -191,6 +192,7 @@ export default function TicketDashboard({
   const [totalCount, setTotalCount] = useState(initialCount)
   const [statusFilter, setStatusFilter] = useState('')
   const [categoryFilter, setCategoryFilter] = useState('')
+  const [domainFilter, setDomainFilter] = useState('')
   const [search, setSearch] = useState('')
   const [page, setPage] = useState(1)
   const [totalPages, setTotalPages] = useState(Math.ceil(initialCount / 20))
@@ -202,6 +204,7 @@ export default function TicketDashboard({
     const params = new URLSearchParams({ page: String(page), pageSize: '20' })
     if (statusFilter) params.set('status', statusFilter)
     if (categoryFilter) params.set('category', categoryFilter)
+    if (domainFilter) params.set('domain', domainFilter)
     if (search) params.set('search', search)
 
     const res = await fetch(`/api/tickets?${params}`)
@@ -210,7 +213,7 @@ export default function TicketDashboard({
     setTotalCount(json.count ?? 0)
     setTotalPages(json.totalPages ?? 1)
     setLoading(false)
-  }, [page, statusFilter, categoryFilter, search])
+  }, [page, statusFilter, categoryFilter, domainFilter, search])
 
   useEffect(() => { fetchTickets() }, [fetchTickets])
 
@@ -337,6 +340,17 @@ export default function TicketDashboard({
                 <option key={c} value={c}>{c}</option>
               ))}
             </select>
+            <select
+              value={domainFilter}
+              onChange={(e) => { setDomainFilter(e.target.value); setPage(1) }}
+              className="border border-[#E5E9F2] rounded-lg px-3 py-1.5 text-sm bg-white text-[#1E2A3B] focus:outline-none focus:border-[#3B6EF0]"
+            >
+              <option value="">All Domains</option>
+              <option value="krt">KRT</option>
+              <option value="brigade">Brigade</option>
+              <option value="acb">ACB</option>
+              <option value="other">Other</option>
+            </select>
           </div>
 
           {/* Table */}
@@ -349,7 +363,7 @@ export default function TicketDashboard({
               <table className="w-full text-sm">
                 <thead className="bg-[#F4F6FB] border-b border-[#E5E9F2]">
                   <tr>
-                    {['ID', 'Subject', 'Category', 'Priority', 'Status', 'Requester', 'Assignee', 'Created', 'SLA'].map((h) => (
+                    {['ID', 'Subject', 'Domain', 'Category', 'Priority', 'Status', 'Requester', 'Assignee', 'Created', 'SLA'].map((h) => (
                       <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-[#6B7A99] uppercase tracking-wide">
                         {h}
                       </th>
@@ -361,6 +375,16 @@ export default function TicketDashboard({
                     <tr key={t.id} className="hover:bg-[#F4F6FB] transition-colors">
                       <td className="px-4 py-3 text-[#6B7A99] font-mono">#{t.zendesk_id}</td>
                       <td className="px-4 py-3 text-[#1E2A3B] max-w-[200px] truncate">{t.subject}</td>
+                      <td className="px-4 py-3">
+                        <span className={`px-2 py-0.5 rounded text-xs font-medium ${
+                          t.domain === 'krt' ? 'bg-indigo-100 text-indigo-700' :
+                          t.domain === 'brigade' ? 'bg-orange-100 text-orange-700' :
+                          t.domain === 'acb' ? 'bg-teal-100 text-teal-700' :
+                          'bg-gray-100 text-gray-600'
+                        }`}>
+                          {t.domain === 'krt' ? 'KRT' : t.domain === 'brigade' ? 'Brigade' : t.domain === 'acb' ? 'ACB' : 'Other'}
+                        </span>
+                      </td>
                       <td className="px-4 py-3">
                         <span className={`px-2 py-0.5 rounded text-xs font-medium ${CATEGORY_COLORS[t.category] ?? 'bg-gray-100 text-gray-600'}`}>
                           {t.category}

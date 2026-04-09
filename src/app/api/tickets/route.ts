@@ -5,6 +5,7 @@ export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url)
   const status = searchParams.get('status')
   const category = searchParams.get('category')
+  const domain = searchParams.get('domain')
   const search = searchParams.get('search')
   const org = searchParams.get('org')
   const page = Math.max(1, parseInt(searchParams.get('page') ?? '1'))
@@ -16,6 +17,7 @@ export async function GET(req: NextRequest) {
 
   if (status) query = query.eq('status', status)
   if (category) query = query.eq('category', category)
+  if (domain) query = query.eq('domain', domain)
   if (org) query = query.eq('requester_org', org)
   if (search) {
     query = query.or(

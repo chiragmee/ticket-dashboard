@@ -1,3 +1,18 @@
+export function deriveDomain(subject: string, description: string, ccEmails: string): string {
+  const text = `${subject} ${description} ${ccEmails}`.toLowerCase()
+
+  // KRT: Knowledge Realty Trust, KRT, Nucleus, Spark
+  if (/\b(knowledge realty trust|krt|nucleus|spark)\b/.test(text)) return 'krt'
+
+  // Brigade: Brigade, Brigade NXT, Brigade WTC
+  if (/\bbrigade\b/.test(text)) return 'brigade'
+
+  // ACB: Anacity Business, ACB
+  if (/\b(anacity business|acb)\b/.test(text)) return 'acb'
+
+  return 'other'
+}
+
 export function deriveCategory(tags: string[]): string {
   if (tags.includes('bug') || tags.includes('defect')) return 'bug'
   if (tags.includes('feature-request') || tags.includes('feature_request')) return 'feature'
@@ -44,14 +59,17 @@ export function mapZendeskTicket(raw: Record<string, unknown>) {
 
   const createdAt = (raw.created_at ?? raw.zendesk_created_at ?? new Date().toISOString()) as string
   const updatedAt = (raw.updated_at ?? raw.zendesk_updated_at ?? new Date().toISOString()) as string
+  const description = (raw.description ?? '') as string
+  const ccEmails = (raw.cc_emails ?? raw.email_ccs ?? '') as string
 
   return {
     zendesk_id: id,
     subject,
-    description: (raw.description ?? '') as string,
+    description,
     status,
     priority: ['low', 'normal', 'high', 'urgent'].includes(priority) ? priority : 'normal',
     category: deriveCategory(tags),
+    domain: deriveDomain(subject, description, ccEmails),
     requester_email: requesterEmail,
     requester_name: requesterName,
     requester_org: '',
