@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback, useEffect } from 'react'
+import { useState, useCallback, useEffect, useRef } from 'react'
 import { useTicketRealtime } from '@/hooks/useTicketRealtime'
 
 type UserProfile = {
@@ -173,28 +173,49 @@ function DonutChart({ summary }: { summary: Summary }) {
 }
 
 // ─── Category Bars ───────────────────────────────────────────────────────────
-function CategoryBars({ byCategory, total }: { byCategory: Record<string, number>; total: number }) {
+function CategoryBars({
+  byCategory, total, activeCategory, onCategoryClick,
+}: {
+  byCategory: Record<string, number>
+  total: number
+  activeCategory: string
+  onCategoryClick: (cat: string) => void
+}) {
   const colors: Record<string, string> = {
     bug: '#EF4444', feature: '#3B6EF0', query: '#64748B', other: '#F59E0B',
   }
   return (
     <div className="bg-white rounded-2xl border border-[#E5E9F2] p-5 shadow-sm">
-      <h3 className="text-sm font-semibold text-[#1E2A3B] mb-4">By Category</h3>
+      <h3 className="text-sm font-semibold text-[#1E2A3B] mb-1">By Category</h3>
+      <p className="text-xs text-[#9BAABB] mb-4">Click to filter table</p>
       <div className="space-y-3.5">
-        {Object.entries(byCategory).map(([cat, count]) => (
-          <div key={cat}>
-            <div className="flex justify-between text-sm mb-1.5">
-              <span className="capitalize font-medium text-[#1E2A3B]">{cat}</span>
-              <span className="text-[#6B7A99] tabular-nums">{count}</span>
-            </div>
-            <div className="h-1.5 bg-[#F1F3F9] rounded-full overflow-hidden">
-              <div
-                className="h-full rounded-full transition-all duration-700 ease-out"
-                style={{ width: `${total ? (count / total) * 100 : 0}%`, backgroundColor: colors[cat] ?? '#6B7A99' }}
-              />
-            </div>
-          </div>
-        ))}
+        {Object.entries(byCategory).map(([cat, count]) => {
+          const isActive = activeCategory === cat
+          const isDimmed = activeCategory && activeCategory !== cat
+          return (
+            <button
+              key={cat}
+              type="button"
+              onClick={() => onCategoryClick(cat)}
+              className={`w-full text-left transition-all duration-150 rounded-xl px-2 py-1.5 -mx-2 ${
+                isActive
+                  ? 'bg-[#F4F6FB] ring-1 ring-[#3B6EF0]/30'
+                  : 'hover:bg-[#F8F9FC]'
+              } ${isDimmed ? 'opacity-40' : ''}`}
+            >
+              <div className="flex justify-between text-sm mb-1.5">
+                <span className={`capitalize font-medium ${isActive ? 'text-[#3B6EF0]' : 'text-[#1E2A3B]'}`}>{cat}</span>
+                <span className="text-[#6B7A99] tabular-nums">{count}</span>
+              </div>
+              <div className="h-1.5 bg-[#F1F3F9] rounded-full overflow-hidden">
+                <div
+                  className="h-full rounded-full transition-all duration-700 ease-out"
+                  style={{ width: `${total ? (count / total) * 100 : 0}%`, backgroundColor: colors[cat] ?? '#6B7A99' }}
+                />
+              </div>
+            </button>
+          )
+        })}
       </div>
     </div>
   )
@@ -214,9 +235,13 @@ export default function TicketDashboard({
   const [statusFilter, setStatusFilter] = useState('')
   const [categoryFilter, setCategoryFilter] = useState('')
   const [domainFilter, setDomainFilter] = useState('')
+  const [assigneeFilter, setAssigneeFilter] = useState('')
   const [dateFrom, setDateFrom] = useState('')
   const [dateTo, setDateTo] = useState('')
   const [search, setSearch] = useState('')
+  const [assignees, setAssignees] = useState<string[]>([])
+  const dateFromRef = useRef<HTMLInputElement>(null)
+  const dateToRef = useRef<HTMLInputElement>(null)
   const [page, setPage] = useState(1)
   const [totalPages, setTotalPages] = useState(Math.ceil(initialCount / 10))
   const [loading, setLoading] = useState(false)
@@ -229,6 +254,9 @@ export default function TicketDashboard({
     fetch('/api/auth/profile').then(r => r.json()).then(json => {
       if (json.profile) setUserProfile(json.profile)
     })
+    fetch('/api/tickets/assignees').then(r => r.json()).then(json => {
+      if (json.assignees) setAssignees(json.assignees)
+    })
   }, [])
 
   const fetchTickets = useCallback(async () => {
@@ -237,8 +265,12 @@ export default function TicketDashboard({
     if (statusFilter) params.set('status', statusFilter)
     if (categoryFilter) params.set('category', categoryFilter)
     if (domainFilter) params.set('domain', domainFilter)
-    if (dateFrom) params.set('date_from', dateFrom)
-    if (dateTo) params.set('date_to', dateTo)
+    if (assigneeFilter) params.set('assignee', assigneeFilter)
+    // Date filter: only apply when BOTH dates are selected
+    if (dateFrom && dateTo) {
+      params.set('date_from', dateFrom)
+      params.set('date_to', dateTo)
+    }
     if (search) params.set('search', search)
 
     const res = await fetch(`/api/tickets?${params}`)
@@ -247,7 +279,7 @@ export default function TicketDashboard({
     setTotalCount(json.count ?? 0)
     setTotalPages(json.totalPages ?? 1)
     setLoading(false)
-  }, [page, statusFilter, categoryFilter, domainFilter, dateFrom, dateTo, search])
+  }, [page, statusFilter, categoryFilter, domainFilter, assigneeFilter, dateFrom, dateTo, search])
 
   useEffect(() => { fetchTickets() }, [fetchTickets])
 
@@ -281,6 +313,27 @@ export default function TicketDashboard({
   }, [addEvent, refreshSummary])
 
   const { isConnected } = useTicketRealtime({ onInsert: handleInsert, onUpdate: handleUpdate })
+
+  const [exporting, setExporting] = useState(false)
+  const handleExport = useCallback(async () => {
+    setExporting(true)
+    const params = new URLSearchParams()
+    if (statusFilter)   params.set('status', statusFilter)
+    if (categoryFilter) params.set('category', categoryFilter)
+    if (domainFilter)   params.set('domain', domainFilter)
+    if (assigneeFilter) params.set('assignee', assigneeFilter)
+    if (dateFrom && dateTo) { params.set('date_from', dateFrom); params.set('date_to', dateTo) }
+    if (search) params.set('search', search)
+    const res = await fetch(`/api/tickets/export?${params}`)
+    const blob = await res.blob()
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `tickets-${new Date().toISOString().slice(0, 10)}.csv`
+    a.click()
+    URL.revokeObjectURL(url)
+    setExporting(false)
+  }, [statusFilter, categoryFilter, domainFilter, assigneeFilter, dateFrom, dateTo, search])
 
   const kpiCards = [
     {
@@ -325,6 +378,7 @@ export default function TicketDashboard({
         <nav className="p-3 space-y-0.5 flex-1">
           {[
             { label: 'Dashboard', href: '/dashboard', active: true },
+            { label: 'Reports', href: '/dashboard/reports', active: false },
             ...(userProfile?.role === 'admin' ? [
               { label: 'SLA Config', href: '/dashboard/sla', active: false },
               { label: 'Sync', href: '/dashboard/sync', active: false },
@@ -372,6 +426,19 @@ export default function TicketDashboard({
         <header className="bg-white/80 backdrop-blur-sm border-b border-[#E5E9F2] px-6 py-3.5 flex items-center justify-between sticky top-0 z-10">
           <h1 className="text-base font-semibold text-[#1E2A3B]">Ticket Dashboard</h1>
           <div className="flex items-center gap-3">
+            {/* Export CSV */}
+            <button
+              onClick={handleExport}
+              disabled={exporting}
+              className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-medium border border-[#E5E9F2] bg-white text-[#1E2A3B] hover:border-[#3B6EF0]/40 hover:text-[#3B6EF0] disabled:opacity-50 transition-all duration-150 shadow-sm"
+            >
+              {exporting ? (
+                <svg className="animate-spin" width="12" height="12" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="6" stroke="currentColor" strokeWidth="2" strokeDasharray="20 10"/></svg>
+              ) : (
+                <svg width="12" height="12" viewBox="0 0 16 16" fill="none"><path d="M8 2v8M5 7l3 3 3-3M3 11v1a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2v-1" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+              )}
+              {exporting ? 'Exporting…' : 'Export CSV'}
+            </button>
             {/* Live indicator */}
             <div className={`flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-full border transition-all duration-300 ${
               isConnected ? 'bg-emerald-50 border-emerald-200 text-emerald-700' : 'bg-gray-50 border-gray-200 text-gray-500'
@@ -437,7 +504,12 @@ export default function TicketDashboard({
           {/* Charts */}
           <div className="grid grid-cols-2 gap-4">
             <DonutChart summary={summary} />
-            <CategoryBars byCategory={summary.by_category} total={summary.total} />
+            <CategoryBars
+              byCategory={summary.by_category}
+              total={summary.total}
+              activeCategory={categoryFilter}
+              onCategoryClick={(cat) => { setCategoryFilter(categoryFilter === cat ? '' : cat); setPage(1) }}
+            />
           </div>
 
           {/* Filters */}
@@ -484,11 +556,19 @@ export default function TicketDashboard({
 
             {/* Date range */}
             <div className="flex items-center gap-2 bg-white border border-[#E5E9F2] rounded-xl px-3 py-1.5 shadow-sm">
-              <svg width="12" height="12" viewBox="0 0 14 14" fill="none" className="text-[#9BAABB] flex-shrink-0">
-                <rect x="1" y="2" width="12" height="11" rx="1.5" stroke="currentColor" strokeWidth="1.3"/>
-                <path d="M4 1v2M10 1v2M1 5h12" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/>
-              </svg>
+              <button
+                type="button"
+                onClick={() => dateFromRef.current?.showPicker()}
+                className="text-[#9BAABB] hover:text-[#3B6EF0] flex-shrink-0 transition-colors"
+                title="Open date picker"
+              >
+                <svg width="12" height="12" viewBox="0 0 14 14" fill="none">
+                  <rect x="1" y="2" width="12" height="11" rx="1.5" stroke="currentColor" strokeWidth="1.3"/>
+                  <path d="M4 1v2M10 1v2M1 5h12" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/>
+                </svg>
+              </button>
               <input
+                ref={dateFromRef}
                 type="date"
                 value={dateFrom}
                 onChange={(e) => { setDateFrom(e.target.value); setPage(1) }}
@@ -496,7 +576,19 @@ export default function TicketDashboard({
                 title="From date"
               />
               <span className="text-[#D1D9E6] text-xs">→</span>
+              <button
+                type="button"
+                onClick={() => dateToRef.current?.showPicker()}
+                className="text-[#9BAABB] hover:text-[#3B6EF0] flex-shrink-0 transition-colors"
+                title="Open date picker"
+              >
+                <svg width="12" height="12" viewBox="0 0 14 14" fill="none">
+                  <rect x="1" y="2" width="12" height="11" rx="1.5" stroke="currentColor" strokeWidth="1.3"/>
+                  <path d="M4 1v2M10 1v2M1 5h12" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/>
+                </svg>
+              </button>
               <input
+                ref={dateToRef}
                 type="date"
                 value={dateTo}
                 onChange={(e) => { setDateTo(e.target.value); setPage(1) }}
@@ -505,9 +597,21 @@ export default function TicketDashboard({
               />
             </div>
 
-            {(statusFilter || categoryFilter || domainFilter || search || dateFrom || dateTo) && (
+            {/* Assignee filter */}
+            <select
+              value={assigneeFilter}
+              onChange={(e) => { setAssigneeFilter(e.target.value); setPage(1) }}
+              className="border border-[#E5E9F2] rounded-xl px-3 py-2 text-xs font-medium bg-white text-[#1E2A3B] focus:outline-none focus:border-[#3B6EF0] focus:ring-2 focus:ring-[#3B6EF0]/10 transition-all shadow-sm cursor-pointer"
+            >
+              <option value="">All Assignees</option>
+              {assignees.map((a) => (
+                <option key={a} value={a}>{a}</option>
+              ))}
+            </select>
+
+            {(statusFilter || categoryFilter || domainFilter || assigneeFilter || search || dateFrom || dateTo) && (
               <button
-                onClick={() => { setStatusFilter(''); setCategoryFilter(''); setDomainFilter(''); setDateFrom(''); setDateTo(''); setSearch(''); setPage(1) }}
+                onClick={() => { setStatusFilter(''); setCategoryFilter(''); setDomainFilter(''); setAssigneeFilter(''); setDateFrom(''); setDateTo(''); setSearch(''); setPage(1) }}
                 className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-medium text-[#6B7A99] hover:text-red-600 hover:bg-red-50 border border-[#E5E9F2] hover:border-red-200 transition-all duration-150"
               >
                 <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M1 1l8 8M9 1L1 9" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
@@ -594,9 +698,17 @@ export default function TicketDashboard({
                         </td>
 
                         <td className="px-4 py-3.5">
-                          <span className={`px-2 py-0.5 rounded-full border text-xs font-medium capitalize ${categoryM.badge}`}>
+                          <button
+                            type="button"
+                            onClick={(e) => { e.stopPropagation(); setCategoryFilter(categoryFilter === t.category ? '' : t.category); setPage(1) }}
+                            className={`px-2 py-0.5 rounded-full border text-xs font-medium capitalize transition-all duration-150 ${
+                              categoryFilter && categoryFilter !== t.category
+                                ? 'opacity-30 grayscale'
+                                : categoryM.badge
+                            } hover:scale-105 cursor-pointer`}
+                          >
                             {t.category}
-                          </span>
+                          </button>
                         </td>
 
                         <td className="px-4 py-3.5">

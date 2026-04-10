@@ -39,6 +39,8 @@ export async function GET(req: NextRequest) {
   if (status) query = query.eq('status', status)
   if (category) query = query.eq('category', category)
   if (org) query = query.eq('requester_org', org)
+  const assignee = searchParams.get('assignee')
+  if (assignee) query = query.eq('assignee_name', assignee)
   if (search) {
     query = query.or(
       `subject.ilike.%${search}%,requester_name.ilike.%${search}%,requester_email.ilike.%${search}%`

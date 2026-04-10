@@ -20,6 +20,7 @@ export default function DashboardShell({ children }: { children: React.ReactNode
 
   const navItems = [
     { label: 'Dashboard', href: '/dashboard' },
+    { label: 'Reports', href: '/dashboard/reports' },
     ...(userProfile?.role === 'admin' ? [
       { label: 'SLA Config', href: '/dashboard/sla' },
       { label: 'Sync', href: '/dashboard/sync' },
