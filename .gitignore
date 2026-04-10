@@ -39,3 +39,6 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# local-only docs (contains internal URLs, env var names, deployment details)
+progress.md
