@@ -396,7 +396,7 @@ export default function TicketDashboard({
           </div>
         </header>
 
-        <div className="flex-1 overflow-hidden flex flex-col gap-5 p-6 pb-0 min-h-0">
+        <div className="flex-1 overflow-y-auto p-6 space-y-5">
 
           {/* KPI Cards */}
           <div className="flex gap-3">
@@ -516,14 +516,14 @@ export default function TicketDashboard({
             )}
           </div>
 
-          {/* Table — flex-1 so it fills remaining height, thead sticky */}
-          <div className="flex-1 min-h-0 flex flex-col bg-white rounded-2xl border border-[#E5E9F2] overflow-hidden shadow-sm">
-            <div className="overflow-auto flex-1 min-h-0">
+          {/* Table */}
+          <div className="bg-white rounded-2xl border border-[#E5E9F2] overflow-hidden shadow-sm">
+            <div className="overflow-x-auto">
             <table className="w-full text-sm">
-              <thead className="sticky top-0 z-10">
+              <thead>
                 <tr className="border-b border-[#E5E9F2] bg-[#F8F9FC]">
                   {['ID', 'Subject', 'Domain', 'Category', 'Priority', 'Status', 'Requester', 'Assignee', 'Created', 'SLA', 'CSAT'].map((h) => (
-                    <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-[#9BAABB] uppercase tracking-wider whitespace-nowrap">
+                    <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-[#9BAABB] uppercase tracking-wider">
                       {h}
                     </th>
                   ))}
@@ -653,8 +653,8 @@ export default function TicketDashboard({
             </table>
             </div>
 
-            {/* Pagination — pinned to bottom of table card */}
-            <div className="flex items-center justify-between px-4 py-3 border-t border-[#F1F3F9] bg-white flex-shrink-0">
+            {/* Pagination */}
+            <div className="flex items-center justify-between px-4 py-3 border-t border-[#F1F3F9]">
               <span className="text-xs text-[#9BAABB]">{totalCount} tickets · page {page} of {totalPages || 1}</span>
               <div className="flex items-center gap-2">
                 <button
@@ -689,9 +689,6 @@ export default function TicketDashboard({
               </div>
             </div>
           </div>
-
-          {/* Bottom padding */}
-          <div className="flex-shrink-0 h-4" />
 
           {/* Live events toast strip */}
           {events.length > 0 && (
