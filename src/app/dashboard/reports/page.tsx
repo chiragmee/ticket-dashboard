@@ -56,7 +56,7 @@ function BarGroup({ title, data, colors }: { title: string; data: Record<string,
             </div>
             <div className="h-2 bg-[#F1F3F9] rounded-full overflow-hidden">
               <div
-                className="h-full rounded-full transition-all duration-700"
+                className="h-full rounded-full"
                 style={{ width: `${(count / total) * 100}%`, backgroundColor: colors[key] ?? '#9CA3AF' }}
               />
             </div>
@@ -91,7 +91,7 @@ export default function ReportsPage() {
     setLoading(false)
   }, [dateFrom, dateTo, domain, canGenerate])
 
-  const handleExport = useCallback(async () => {
+  const handleExportCSV = useCallback(async () => {
     if (!report) return
     setExporting(true)
     const params = new URLSearchParams({ date_from: report.date_from, date_to: report.date_to })
@@ -107,34 +107,72 @@ export default function ReportsPage() {
     setExporting(false)
   }, [report, domain])
 
+  const handleExportPDF = useCallback(() => {
+    window.print()
+  }, [])
+
   return (
     <DashboardShell>
-      <div className="p-6 space-y-6 animate-fadeInUp">
+      {/* Print styles — only active during window.print() */}
+      <style dangerouslySetInnerHTML={{ __html: `
+        @media print {
+          @page { margin: 1.2cm; size: A4; }
+          aside, .no-print { display: none !important; }
+          body { background: white !important; }
+          .print-area { padding: 0 !important; }
+          .print-area .animate-fadeInUp { animation: none !important; }
+          * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+        }
+      `}} />
+
+      <div className="p-6 space-y-6 animate-fadeInUp print-area">
 
         {/* Header */}
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between no-print">
           <div>
             <h1 className="text-lg font-bold text-[#1E2A3B]">Reports</h1>
             <p className="text-sm text-[#9BAABB] mt-0.5">Generate a summary for any date range</p>
           </div>
           {report && (
-            <button
-              onClick={handleExport}
-              disabled={exporting}
-              className="flex items-center gap-2 px-4 py-2 bg-[#3B6EF0] text-white text-sm font-medium rounded-xl hover:bg-[#2a5cd4] disabled:opacity-50 transition-all shadow-sm shadow-[#3B6EF0]/25"
-            >
-              {exporting ? (
-                <svg className="animate-spin" width="14" height="14" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="6" stroke="white" strokeWidth="2" strokeDasharray="20 10"/></svg>
-              ) : (
-                <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M8 2v8M5 7l3 3 3-3M3 11v1a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2v-1" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
-              )}
-              {exporting ? 'Exporting…' : 'Download CSV'}
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={handleExportCSV}
+                disabled={exporting}
+                className="flex items-center gap-2 px-4 py-2 bg-white border border-[#E5E9F2] text-[#1E2A3B] text-sm font-medium rounded-xl hover:border-[#3B6EF0]/40 hover:text-[#3B6EF0] disabled:opacity-50 transition-all shadow-sm"
+              >
+                {exporting ? (
+                  <svg className="animate-spin" width="14" height="14" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="6" stroke="currentColor" strokeWidth="2" strokeDasharray="20 10"/></svg>
+                ) : (
+                  <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M8 2v8M5 7l3 3 3-3M3 11v1a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2v-1" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                )}
+                {exporting ? 'Exporting…' : 'Download CSV'}
+              </button>
+              <button
+                onClick={handleExportPDF}
+                className="flex items-center gap-2 px-4 py-2 bg-[#3B6EF0] text-white text-sm font-medium rounded-xl hover:bg-[#2a5cd4] transition-all shadow-sm shadow-[#3B6EF0]/25"
+              >
+                <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M3 1h7l3 3v10a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1Z" stroke="white" strokeWidth="1.4" strokeLinejoin="round"/><path d="M10 1v3h3M5 9h6M5 11.5h4" stroke="white" strokeWidth="1.4" strokeLinecap="round"/></svg>
+                Download PDF
+              </button>
+            </div>
           )}
         </div>
 
+        {/* Print header — only visible during print */}
+        {report && (
+          <div className="hidden print:block mb-2">
+            <h1 className="text-xl font-bold text-[#1E2A3B]">TicketView — Report</h1>
+            <p className="text-sm text-[#6B7A99] mt-0.5">
+              {new Date(report.date_from).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
+              {' → '}
+              {new Date(report.date_to).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
+              {domain && ` · ${domain.toUpperCase()}`}
+            </p>
+          </div>
+        )}
+
         {/* Filters */}
-        <div className="bg-white rounded-2xl border border-[#E5E9F2] p-5 shadow-sm">
+        <div className="bg-white rounded-2xl border border-[#E5E9F2] p-5 shadow-sm no-print">
           <div className="flex items-end gap-4 flex-wrap">
             <div className="space-y-1.5">
               <label className="text-xs font-semibold text-[#6B7A99] uppercase tracking-wide">From</label>
@@ -182,12 +220,12 @@ export default function ReportsPage() {
         </div>
 
         {error && (
-          <div className="bg-red-50 border border-red-200 rounded-xl px-4 py-3 text-sm text-red-700">{error}</div>
+          <div className="bg-red-50 border border-red-200 rounded-xl px-4 py-3 text-sm text-red-700 no-print">{error}</div>
         )}
 
         {/* Skeleton */}
         {loading && (
-          <div className="space-y-4 animate-pulse">
+          <div className="space-y-4 animate-pulse no-print">
             <div className="grid grid-cols-4 gap-4">
               {[...Array(4)].map((_, i) => (
                 <div key={i} className="bg-white rounded-2xl border border-[#E5E9F2] p-5 h-24">
@@ -214,7 +252,7 @@ export default function ReportsPage() {
           <div className="space-y-4 animate-fadeInUp">
 
             {/* Period banner */}
-            <div className="flex items-center gap-2 text-sm text-[#6B7A99]">
+            <div className="flex items-center gap-2 text-sm text-[#6B7A99] no-print">
               <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><rect x="1" y="2" width="14" height="12" rx="2" stroke="currentColor" strokeWidth="1.3"/><path d="M5 1v2M11 1v2M1 6h14" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/></svg>
               <span>
                 {new Date(report.date_from).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}

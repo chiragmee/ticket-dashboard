@@ -83,7 +83,7 @@ export default function DashboardShell({ children }: { children: React.ReactNode
       </aside>
 
       {/* Main content — fades in on each page */}
-      <div className="flex-1 flex flex-col overflow-hidden animate-fadeInUp">
+      <div className="flex-1 flex flex-col overflow-y-auto animate-fadeInUp">
         {children}
       </div>
     </div>
