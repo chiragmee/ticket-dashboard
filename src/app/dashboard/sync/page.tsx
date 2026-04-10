@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
+import DashboardShell from '@/components/DashboardShell'
 
 type SyncLog = {
   id: number
@@ -12,9 +13,21 @@ type SyncLog = {
   error_message: string
 }
 
+function SkeletonRow() {
+  return (
+    <tr className="border-b border-[#F1F3F9] animate-pulse">
+      {[20, 32, 32, 12, 16, 24].map((w, i) => (
+        <td key={i} className="px-4 py-4">
+          <div className="h-3 bg-[#EEF0F5] rounded-full" style={{ width: `${w * 4}px` }} />
+        </td>
+      ))}
+    </tr>
+  )
+}
+
 export default function SyncPage() {
   const [logs, setLogs] = useState<SyncLog[]>([])
-  const [loading, setLoading] = useState(false)
+  const [loading, setLoading] = useState(true)
   const [syncing, setSyncing] = useState(false)
   const [result, setResult] = useState<{ synced?: number; error?: string } | null>(null)
 
@@ -40,97 +53,123 @@ export default function SyncPage() {
     fetchLogs()
   }
 
-  const lastSuccess = logs.find((l) => l.status === 'success')
+  const lastSuccess = logs.find(l => l.status === 'success')
 
   return (
-    <div className="min-h-screen bg-[#F4F6FB] p-8">
-      <div className="max-w-3xl mx-auto space-y-6">
-        <div>
-          <h1 className="text-2xl font-bold text-[#1E2A3B]">Zendesk Sync</h1>
-          <p className="text-sm text-[#6B7A99] mt-1">Manually pull latest tickets from Zendesk</p>
-        </div>
+    <DashboardShell>
+      {/* Header */}
+      <header className="bg-white/80 backdrop-blur-sm border-b border-[#E5E9F2] px-6 py-3.5 flex items-center justify-between flex-shrink-0">
+        <h1 className="text-base font-semibold text-[#1E2A3B]">Zendesk Sync</h1>
+      </header>
 
-        <div className="bg-white rounded-xl border border-[#E5E9F2] p-6 flex items-center justify-between">
+      <div className="flex-1 overflow-y-auto p-6 space-y-5">
+
+        {/* Sync card */}
+        <div className="bg-white rounded-2xl border border-[#E5E9F2] p-5 shadow-sm flex items-center justify-between gap-4">
           <div>
-            <div className="text-sm font-medium text-[#1E2A3B]">Last successful sync</div>
-            <div className="text-sm text-[#6B7A99] mt-1">
+            <div className="text-sm font-semibold text-[#1E2A3B]">Manual Sync</div>
+            <div className="text-xs text-[#9BAABB] mt-1">
               {lastSuccess
-                ? `${new Date(lastSuccess.completed_at!).toLocaleString()} — ${lastSuccess.tickets_processed} tickets`
+                ? `Last synced ${new Date(lastSuccess.completed_at!).toLocaleString('en-IN', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })} — ${lastSuccess.tickets_processed} tickets`
                 : 'Never synced'}
             </div>
           </div>
           <button
             onClick={runSync}
             disabled={syncing}
-            className="px-5 py-2 bg-[#3B6EF0] text-white rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-50 transition-colors"
+            className="flex items-center gap-2 px-5 py-2.5 bg-[#3B6EF0] text-white rounded-xl text-sm font-semibold hover:bg-[#2a5cd4] disabled:opacity-50 transition-all shadow-sm shadow-[#3B6EF0]/25"
           >
-            {syncing ? 'Syncing...' : 'Sync from Zendesk'}
+            {syncing ? (
+              <>
+                <svg className="animate-spin" width="14" height="14" viewBox="0 0 16 16" fill="none">
+                  <circle cx="8" cy="8" r="6" stroke="white" strokeWidth="2" strokeDasharray="20" strokeDashoffset="10"/>
+                </svg>
+                Syncing…
+              </>
+            ) : (
+              <>
+                <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
+                  <path d="M13 3v4h-4M3 13v-4h4" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                  <path d="M13 7A6 6 0 0 0 3.4 5M3 9a6 6 0 0 0 9.6 2" stroke="white" strokeWidth="1.5" strokeLinecap="round"/>
+                </svg>
+                Sync from Zendesk
+              </>
+            )}
           </button>
         </div>
 
+        {/* Result banner */}
         {result && (
-          <div
-            className={`rounded-xl border p-4 text-sm ${
-              result.error
-                ? 'bg-red-50 border-red-200 text-red-700'
-                : 'bg-green-50 border-green-200 text-green-700'
-            }`}
-          >
-            {result.error ? `Error: ${result.error}` : `Synced ${result.synced} tickets successfully.`}
+          <div className={`rounded-2xl border px-5 py-3.5 text-sm font-medium flex items-center gap-2.5 ${
+            result.error
+              ? 'bg-red-50 border-red-200 text-red-700'
+              : 'bg-emerald-50 border-emerald-200 text-emerald-700'
+          }`}>
+            {result.error
+              ? <><span>✗</span> {result.error}</>
+              : <><span>✓</span> Synced {result.synced} tickets successfully</>
+            }
           </div>
         )}
 
-        <div className="bg-white rounded-xl border border-[#E5E9F2] overflow-hidden">
+        {/* Sync history table */}
+        <div className="bg-white rounded-2xl border border-[#E5E9F2] overflow-hidden shadow-sm">
           <div className="px-5 py-4 border-b border-[#E5E9F2]">
             <h2 className="text-sm font-semibold text-[#1E2A3B]">Sync History</h2>
           </div>
-          {loading ? (
-            <div className="p-8 text-center text-[#6B7A99] text-sm">Loading...</div>
-          ) : logs.length === 0 ? (
-            <div className="p-8 text-center text-[#6B7A99] text-sm">No sync history yet.</div>
-          ) : (
-            <table className="w-full text-sm">
-              <thead className="bg-[#F4F6FB]">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="bg-[#F8F9FC] border-b border-[#E5E9F2]">
+                {['Type', 'Started', 'Completed', 'Tickets', 'Status', 'Notes'].map(h => (
+                  <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-[#9BAABB] uppercase tracking-wider">{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-[#F1F3F9]">
+              {loading ? (
+                Array.from({ length: 5 }).map((_, i) => <SkeletonRow key={i} />)
+              ) : logs.length === 0 ? (
                 <tr>
-                  {['Type', 'Started', 'Completed', 'Tickets', 'Status', 'Error'].map((h) => (
-                    <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-[#6B7A99] uppercase">
-                      {h}
-                    </th>
-                  ))}
+                  <td colSpan={6} className="px-4 py-12 text-center text-[#9BAABB] text-sm">No sync history yet.</td>
                 </tr>
-              </thead>
-              <tbody className="divide-y divide-[#E5E9F2]">
-                {logs.map((log) => (
-                  <tr key={log.id} className="hover:bg-[#F4F6FB]">
-                    <td className="px-4 py-3 text-[#1E2A3B] capitalize">{log.sync_type}</td>
-                    <td className="px-4 py-3 text-[#6B7A99]">{new Date(log.started_at).toLocaleString()}</td>
-                    <td className="px-4 py-3 text-[#6B7A99]">
-                      {log.completed_at ? new Date(log.completed_at).toLocaleString() : '—'}
+              ) : (
+                logs.map(log => (
+                  <tr key={log.id} className="hover:bg-[#F8F9FC] transition-colors duration-100">
+                    <td className="px-4 py-3.5 text-[#1E2A3B] font-medium capitalize">{log.sync_type}</td>
+                    <td className="px-4 py-3.5 text-[#6B7A99] text-xs">
+                      {new Date(log.started_at).toLocaleString('en-IN', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
                     </td>
-                    <td className="px-4 py-3 text-[#1E2A3B]">{log.tickets_processed}</td>
-                    <td className="px-4 py-3">
-                      <span
-                        className={`px-2 py-0.5 rounded text-xs font-medium ${
-                          log.status === 'success'
-                            ? 'bg-green-100 text-green-700'
-                            : log.status === 'failed'
-                            ? 'bg-red-100 text-red-700'
-                            : 'bg-yellow-100 text-yellow-700'
-                        }`}
-                      >
+                    <td className="px-4 py-3.5 text-[#6B7A99] text-xs">
+                      {log.completed_at
+                        ? new Date(log.completed_at).toLocaleString('en-IN', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
+                        : <span className="text-[#D1D9E6]">—</span>}
+                    </td>
+                    <td className="px-4 py-3.5 font-semibold text-[#1E2A3B]">{log.tickets_processed}</td>
+                    <td className="px-4 py-3.5">
+                      <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-xs font-medium ${
+                        log.status === 'success'
+                          ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                          : log.status === 'failed'
+                          ? 'bg-red-50 text-red-700 border-red-200'
+                          : 'bg-amber-50 text-amber-700 border-amber-200'
+                      }`}>
+                        <span className={`w-1.5 h-1.5 rounded-full ${
+                          log.status === 'success' ? 'bg-emerald-500' : log.status === 'failed' ? 'bg-red-500' : 'bg-amber-500'
+                        }`} />
                         {log.status}
                       </span>
                     </td>
-                    <td className="px-4 py-3 text-red-500 text-xs max-w-[200px] truncate">
-                      {log.error_message || '—'}
+                    <td className="px-4 py-3.5 text-red-500 text-xs max-w-[200px] truncate">
+                      {log.error_message || <span className="text-[#D1D9E6]">—</span>}
                     </td>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
+                ))
+              )}
+            </tbody>
+          </table>
         </div>
+
       </div>
-    </div>
+    </DashboardShell>
   )
 }

@@ -257,20 +257,28 @@ export default function TicketDashboard({
     setSummary(json)
   }, [])
 
+  const addEvent = useCallback((event: RealtimeEvent) => {
+    setEvents(prev => [event, ...prev.slice(0, 4)])
+    // Auto-dismiss after 4 seconds
+    setTimeout(() => {
+      setEvents(prev => prev.filter(e => e.id !== event.id))
+    }, 4000)
+  }, [])
+
   const handleInsert = useCallback((ticket: Record<string, unknown>) => {
     const t = ticket as Ticket
-    setEvents((prev) => [{ id: String(t.zendesk_id), type: 'INSERT', ticket: t, timestamp: new Date() }, ...prev.slice(0, 4)])
+    addEvent({ id: String(t.zendesk_id), type: 'INSERT', ticket: t, timestamp: new Date() })
     setTickets((prev) => [t, ...prev.slice(0, 19)])
     setTotalCount((c) => c + 1)
     refreshSummary()
-  }, [refreshSummary])
+  }, [addEvent, refreshSummary])
 
   const handleUpdate = useCallback((ticket: Record<string, unknown>) => {
     const t = ticket as Ticket
-    setEvents((prev) => [{ id: String(t.zendesk_id) + Date.now(), type: 'UPDATE', ticket: t, timestamp: new Date() }, ...prev.slice(0, 4)])
+    addEvent({ id: String(t.zendesk_id) + Date.now(), type: 'UPDATE', ticket: t, timestamp: new Date() })
     setTickets((prev) => prev.map((tk) => (tk.zendesk_id === t.zendesk_id ? t : tk)))
     refreshSummary()
-  }, [refreshSummary])
+  }, [addEvent, refreshSummary])
 
   const { isConnected } = useTicketRealtime({ onInsert: handleInsert, onUpdate: handleUpdate })
 
