@@ -1,4 +1,4 @@
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://ticket-dashboard-teal.vercel.app'
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? ''
 
 const SLA_BY_CATEGORY: Record<string, string> = {
   bug: '4 hours',

@@ -330,7 +330,7 @@ export default function TicketDetailPage() {
           <div className="p-5 space-y-2">
             {(role === 'admin' || role === 'member') && (
               <a
-                href={`https://${process.env.NEXT_PUBLIC_ZENDESK_SUBDOMAIN ?? 'selfemployed-31120'}.zendesk.com/agent/tickets/${ticket.zendesk_id}`}
+                href={`https://${process.env.NEXT_PUBLIC_ZENDESK_SUBDOMAIN}.zendesk.com/agent/tickets/${ticket.zendesk_id}`}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="flex items-center justify-center gap-2 w-full px-4 py-2 border border-[#E5E9F2] rounded-lg text-sm text-[#6B7A99] hover:text-[#1E2A3B] hover:border-[#3B6EF0] transition-colors"

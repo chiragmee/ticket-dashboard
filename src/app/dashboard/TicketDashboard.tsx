@@ -664,7 +664,7 @@ export default function TicketDashboard({
                         <td className="px-4 py-3.5 font-mono">
                           {userProfile?.role === 'admin' || userProfile?.role === 'member' ? (
                             <a
-                              href={`https://${process.env.NEXT_PUBLIC_ZENDESK_SUBDOMAIN ?? 'selfemployed-31120'}.zendesk.com/agent/tickets/${t.zendesk_id}`}
+                              href={`https://${process.env.NEXT_PUBLIC_ZENDESK_SUBDOMAIN}.zendesk.com/agent/tickets/${t.zendesk_id}`}
                               target="_blank"
                               rel="noopener noreferrer"
                               className="inline-flex items-center gap-1 text-[#3B6EF0] hover:text-[#2a5cd4] font-medium text-xs transition-colors"

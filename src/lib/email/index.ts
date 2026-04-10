@@ -3,7 +3,7 @@ import { acknowledgmentEmail, resolutionEmail, slaBreachEmail } from './template
 
 const resend = new Resend(process.env.RESEND_API_KEY)
 const FROM = 'TicketView <onboarding@resend.dev>'
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://ticket-dashboard-teal.vercel.app'
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? ''
 
 export async function sendAcknowledgment({
   to,
