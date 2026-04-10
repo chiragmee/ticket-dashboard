@@ -172,44 +172,52 @@ export default function ReportsPage() {
         )}
 
         {/* Filters */}
-        <div className="bg-white rounded-2xl border border-[#E5E9F2] p-5 shadow-sm no-print">
-          <div className="flex items-end gap-4 flex-wrap">
-            <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-[#6B7A99] uppercase tracking-wide">From</label>
+        <div className="bg-white rounded-2xl border border-[#E5E9F2] p-4 shadow-sm no-print">
+          <div className="flex items-center gap-2 flex-wrap">
+            {/* From */}
+            <div className="flex items-center gap-2 border border-[#E5E9F2] rounded-xl px-3 py-2.5 bg-[#F8F9FC] focus-within:border-[#3B6EF0] focus-within:ring-2 focus-within:ring-[#3B6EF0]/10 transition-all">
+              <span className="text-xs font-bold text-[#9BAABB] uppercase tracking-wider select-none">From</span>
               <input
                 type="date"
                 value={dateFrom}
                 onChange={(e) => setDateFrom(e.target.value)}
-                className="border border-[#E5E9F2] rounded-xl px-3 py-2 text-sm text-[#1E2A3B] focus:outline-none focus:border-[#3B6EF0] focus:ring-2 focus:ring-[#3B6EF0]/10 bg-[#F8F9FC] transition-all"
+                className="text-sm text-[#1E2A3B] bg-transparent focus:outline-none w-32"
               />
             </div>
-            <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-[#6B7A99] uppercase tracking-wide">To</label>
+
+            <span className="text-[#D1D9E6] text-sm select-none">→</span>
+
+            {/* To */}
+            <div className="flex items-center gap-2 border border-[#E5E9F2] rounded-xl px-3 py-2.5 bg-[#F8F9FC] focus-within:border-[#3B6EF0] focus-within:ring-2 focus-within:ring-[#3B6EF0]/10 transition-all">
+              <span className="text-xs font-bold text-[#9BAABB] uppercase tracking-wider select-none">To</span>
               <input
                 type="date"
                 value={dateTo}
                 onChange={(e) => setDateTo(e.target.value)}
-                className="border border-[#E5E9F2] rounded-xl px-3 py-2 text-sm text-[#1E2A3B] focus:outline-none focus:border-[#3B6EF0] focus:ring-2 focus:ring-[#3B6EF0]/10 bg-[#F8F9FC] transition-all"
+                className="text-sm text-[#1E2A3B] bg-transparent focus:outline-none w-32"
               />
             </div>
-            <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-[#6B7A99] uppercase tracking-wide">Domain</label>
+
+            {/* Domain */}
+            <div className="flex items-center gap-2 border border-[#E5E9F2] rounded-xl px-3 py-2.5 bg-[#F8F9FC] focus-within:border-[#3B6EF0] transition-all">
+              <span className="text-xs font-bold text-[#9BAABB] uppercase tracking-wider select-none">Domain</span>
               <select
                 value={domain}
                 onChange={(e) => setDomain(e.target.value)}
-                className="border border-[#E5E9F2] rounded-xl px-3 py-2 text-sm text-[#1E2A3B] focus:outline-none focus:border-[#3B6EF0] bg-[#F8F9FC] transition-all cursor-pointer"
+                className="text-sm text-[#1E2A3B] bg-transparent focus:outline-none cursor-pointer pr-1"
               >
-                <option value="">All Domains</option>
+                <option value="">All</option>
                 <option value="krt">KRT</option>
                 <option value="brigade">Brigade</option>
                 <option value="acb">ACB</option>
                 <option value="other">Other</option>
               </select>
             </div>
+
             <button
               onClick={generate}
               disabled={!canGenerate || loading}
-              className="px-5 py-2 bg-[#3B6EF0] text-white text-sm font-medium rounded-xl hover:bg-[#2a5cd4] disabled:opacity-40 disabled:cursor-not-allowed transition-all shadow-sm shadow-[#3B6EF0]/25"
+              className="px-5 py-2.5 bg-[#3B6EF0] text-white text-sm font-medium rounded-xl hover:bg-[#2a5cd4] disabled:opacity-40 disabled:cursor-not-allowed transition-all shadow-sm shadow-[#3B6EF0]/25"
             >
               {loading ? 'Generating…' : 'Generate Report'}
             </button>
