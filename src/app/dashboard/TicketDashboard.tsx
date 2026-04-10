@@ -218,7 +218,7 @@ export default function TicketDashboard({
   const [dateTo, setDateTo] = useState('')
   const [search, setSearch] = useState('')
   const [page, setPage] = useState(1)
-  const [totalPages, setTotalPages] = useState(Math.ceil(initialCount / 20))
+  const [totalPages, setTotalPages] = useState(Math.ceil(initialCount / 10))
   const [loading, setLoading] = useState(false)
   const [events, setEvents] = useState<RealtimeEvent[]>([])
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null)
@@ -233,7 +233,7 @@ export default function TicketDashboard({
 
   const fetchTickets = useCallback(async () => {
     setLoading(true)
-    const params = new URLSearchParams({ page: String(page), pageSize: '20' })
+    const params = new URLSearchParams({ page: String(page), pageSize: '10' })
     if (statusFilter) params.set('status', statusFilter)
     if (categoryFilter) params.set('category', categoryFilter)
     if (domainFilter) params.set('domain', domainFilter)
@@ -396,7 +396,7 @@ export default function TicketDashboard({
           </div>
         </header>
 
-        <div className="flex-1 overflow-y-auto p-6 space-y-5">
+        <div className="flex-1 overflow-hidden flex flex-col gap-5 p-6 pb-0 min-h-0">
 
           {/* KPI Cards */}
           <div className="flex gap-3">
@@ -516,13 +516,14 @@ export default function TicketDashboard({
             )}
           </div>
 
-          {/* Table */}
-          <div className="bg-white rounded-2xl border border-[#E5E9F2] overflow-hidden shadow-sm">
+          {/* Table — flex-1 so it fills remaining height, thead sticky */}
+          <div className="flex-1 min-h-0 flex flex-col bg-white rounded-2xl border border-[#E5E9F2] overflow-hidden shadow-sm">
+            <div className="overflow-auto flex-1 min-h-0">
             <table className="w-full text-sm">
-              <thead>
+              <thead className="sticky top-0 z-10">
                 <tr className="border-b border-[#E5E9F2] bg-[#F8F9FC]">
                   {['ID', 'Subject', 'Domain', 'Category', 'Priority', 'Status', 'Requester', 'Assignee', 'Created', 'SLA', 'CSAT'].map((h) => (
-                    <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-[#9BAABB] uppercase tracking-wider">
+                    <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-[#9BAABB] uppercase tracking-wider whitespace-nowrap">
                       {h}
                     </th>
                   ))}
@@ -650,33 +651,47 @@ export default function TicketDashboard({
                 )}
               </tbody>
             </table>
-          </div>
+            </div>
 
-          {/* Pagination */}
-          {totalPages > 1 && (
-            <div className="flex items-center justify-between text-sm text-[#6B7A99] pb-2">
-              <span className="text-xs">{totalCount} tickets total</span>
+            {/* Pagination — pinned to bottom of table card */}
+            <div className="flex items-center justify-between px-4 py-3 border-t border-[#F1F3F9] bg-white flex-shrink-0">
+              <span className="text-xs text-[#9BAABB]">{totalCount} tickets · page {page} of {totalPages || 1}</span>
               <div className="flex items-center gap-2">
                 <button
                   disabled={page <= 1}
-                  onClick={() => setPage((p) => p - 1)}
-                  className="px-3.5 py-2 border border-[#E5E9F2] rounded-xl text-xs hover:bg-white hover:border-[#3B6EF0]/30 disabled:opacity-40 disabled:cursor-not-allowed transition-all duration-150"
+                  onClick={() => setPage(p => p - 1)}
+                  className="px-3.5 py-1.5 border border-[#E5E9F2] rounded-lg text-xs font-medium hover:bg-[#F4F6FB] hover:border-[#3B6EF0]/30 disabled:opacity-40 disabled:cursor-not-allowed transition-all duration-150"
                 >
                   ← Prev
                 </button>
-                <span className="px-3 py-2 text-xs font-medium">
-                  {page} / {totalPages}
-                </span>
+                {/* Page number pills */}
+                {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                  const p = Math.max(1, Math.min(page - 2, totalPages - 4)) + i
+                  return (
+                    <button
+                      key={p}
+                      onClick={() => setPage(p)}
+                      className={`w-7 h-7 rounded-lg text-xs font-medium transition-all ${
+                        p === page ? 'bg-[#3B6EF0] text-white' : 'text-[#6B7A99] hover:bg-[#F4F6FB]'
+                      }`}
+                    >
+                      {p}
+                    </button>
+                  )
+                })}
                 <button
                   disabled={page >= totalPages}
-                  onClick={() => setPage((p) => p + 1)}
-                  className="px-3.5 py-2 border border-[#E5E9F2] rounded-xl text-xs hover:bg-white hover:border-[#3B6EF0]/30 disabled:opacity-40 disabled:cursor-not-allowed transition-all duration-150"
+                  onClick={() => setPage(p => p + 1)}
+                  className="px-3.5 py-1.5 border border-[#E5E9F2] rounded-lg text-xs font-medium hover:bg-[#F4F6FB] hover:border-[#3B6EF0]/30 disabled:opacity-40 disabled:cursor-not-allowed transition-all duration-150"
                 >
                   Next →
                 </button>
               </div>
             </div>
-          )}
+          </div>
+
+          {/* Bottom padding */}
+          <div className="flex-shrink-0 h-4" />
 
           {/* Live events toast strip */}
           {events.length > 0 && (

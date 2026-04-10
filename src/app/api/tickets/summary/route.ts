@@ -18,45 +18,54 @@ export async function GET() {
   const userDomain = profile?.domain_access
   const forceDomain = !isAdmin && userDomain && userDomain !== 'all' ? userDomain : null
 
+  // All queries use HEAD (no row data returned — pure COUNT, very fast)
   const base = () => {
-    const q = admin.from('tickets')
-    return forceDomain ? q.select('*', { count: 'exact', head: true }).eq('domain', forceDomain) : q.select('*', { count: 'exact', head: true })
+    const q = admin.from('tickets').select('*', { count: 'exact', head: true })
+    return forceDomain ? q.eq('domain', forceDomain) : q
   }
 
-  const categoryQuery = forceDomain
-    ? admin.from('tickets').select('category').eq('domain', forceDomain)
-    : admin.from('tickets').select('category')
-
-  const [total, open, inProgress, resolved, overdue, allTickets, csatData] = await Promise.all([
+  const [
+    total, open, inProgress, resolved, overdue,
+    bugCount, featureCount, queryCount,
+    csatData,
+  ] = await Promise.all([
     base(),
     base().eq('status', 'open'),
     base().eq('status', 'in_progress'),
     base().in('status', ['resolved', 'closed']),
     base().lt('sla_breach_at', new Date().toISOString()).not('status', 'in', '("resolved","closed")'),
-    categoryQuery,
+    // Category counts — COUNT only, no row fetch
+    base().eq('category', 'bug'),
+    base().eq('category', 'feature'),
+    base().eq('category', 'query'),
+    // CSAT — only score values needed for avg
     admin.from('ticket_csat').select('score'),
   ])
 
-  const byCategory: Record<string, number> = { bug: 0, feature: 0, query: 0, other: 0 }
-  for (const row of allTickets.data ?? []) {
-    const cat = row.category as string
-    if (cat in byCategory) byCategory[cat]++
-    else byCategory['other']++
+  const totalCount  = total.count ?? 0
+  const bugC        = bugCount.count ?? 0
+  const featureC    = featureCount.count ?? 0
+  const queryC      = queryCount.count ?? 0
+  const byCategory  = {
+    bug:     bugC,
+    feature: featureC,
+    query:   queryC,
+    other:   Math.max(0, totalCount - bugC - featureC - queryC),
   }
 
   const csatScores = csatData.data ?? []
-  const avg_csat = csatScores.length
+  const avg_csat   = csatScores.length
     ? Math.round((csatScores.reduce((sum, r) => sum + r.score, 0) / csatScores.length) * 10) / 10
     : null
 
   return NextResponse.json({
-    total: total.count ?? 0,
-    open: open.count ?? 0,
+    total:       totalCount,
+    open:        open.count ?? 0,
     in_progress: inProgress.count ?? 0,
-    resolved: resolved.count ?? 0,
-    overdue: overdue.count ?? 0,
+    resolved:    resolved.count ?? 0,
+    overdue:     overdue.count ?? 0,
     by_category: byCategory,
     avg_csat,
-    csat_count: csatScores.length,
+    csat_count:  csatScores.length,
   })
 }

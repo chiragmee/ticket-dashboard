@@ -6,42 +6,54 @@ import { createAdminClient } from '@/lib/supabase/admin'
 async function getInitialData() {
   const supabase = createAdminClient()
 
-  const [ticketsResult, totalResult, openResult, inProgressResult, resolvedResult, overdueResult, allCats, csatData] =
-    await Promise.all([
-      supabase.from('tickets').select('*').order('zendesk_id', { ascending: false }).range(0, 19),
-      supabase.from('tickets').select('*', { count: 'exact', head: true }),
-      supabase.from('tickets').select('*', { count: 'exact', head: true }).eq('status', 'open'),
-      supabase.from('tickets').select('*', { count: 'exact', head: true }).eq('status', 'in_progress'),
-      supabase.from('tickets').select('*', { count: 'exact', head: true }).in('status', ['resolved', 'closed']),
-      supabase.from('tickets').select('*', { count: 'exact', head: true })
-        .lt('sla_breach_at', new Date().toISOString())
-        .not('status', 'in', '("resolved","closed")'),
-      supabase.from('tickets').select('category'),
-      supabase.from('ticket_csat').select('score'),
-    ])
+  const base = () => supabase.from('tickets').select('*', { count: 'exact', head: true })
 
-  const byCategory: Record<string, number> = { bug: 0, feature: 0, query: 0, other: 0 }
-  for (const row of allCats.data ?? []) {
-    const cat = row.category as string
-    if (cat in byCategory) byCategory[cat]++
-    else byCategory['other']++
-  }
+  const [
+    ticketsResult,
+    total, open, inProgress, resolved, overdue,
+    bugCount, featureCount, queryCount,
+    csatData,
+  ] = await Promise.all([
+    supabase.from('tickets').select('*').order('zendesk_id', { ascending: false }).range(0, 9),
+    base(),
+    base().eq('status', 'open'),
+    base().eq('status', 'in_progress'),
+    base().in('status', ['resolved', 'closed']),
+    base().lt('sla_breach_at', new Date().toISOString()).not('status', 'in', '("resolved","closed")'),
+    base().eq('category', 'bug'),
+    base().eq('category', 'feature'),
+    base().eq('category', 'query'),
+    supabase.from('ticket_csat').select('score'),
+  ])
 
-  const count = totalResult.count ?? 0
+  const totalCount = total.count ?? 0
+  const bugC       = bugCount.count ?? 0
+  const featureC   = featureCount.count ?? 0
+  const queryC     = queryCount.count ?? 0
+
   const csatScores = csatData.data ?? []
-  const avg_csat = csatScores.length
+  const avg_csat   = csatScores.length
     ? Math.round((csatScores.reduce((sum: number, r: { score: number }) => sum + r.score, 0) / csatScores.length) * 10) / 10
     : null
 
   return {
-    tickets: { data: ticketsResult.data ?? [], count, totalPages: Math.ceil(count / 20) },
+    tickets: {
+      data: ticketsResult.data ?? [],
+      count: totalCount,
+      totalPages: Math.ceil(totalCount / 10),
+    },
     summary: {
-      total: count,
-      open: openResult.count ?? 0,
-      in_progress: inProgressResult.count ?? 0,
-      resolved: resolvedResult.count ?? 0,
-      overdue: overdueResult.count ?? 0,
-      by_category: byCategory,
+      total:       totalCount,
+      open:        open.count ?? 0,
+      in_progress: inProgress.count ?? 0,
+      resolved:    resolved.count ?? 0,
+      overdue:     overdue.count ?? 0,
+      by_category: {
+        bug:     bugC,
+        feature: featureC,
+        query:   queryC,
+        other:   Math.max(0, totalCount - bugC - featureC - queryC),
+      },
       avg_csat,
       csat_count: csatScores.length,
     },
@@ -50,7 +62,6 @@ async function getInitialData() {
 
 export default async function DashboardPage() {
   const { tickets, summary } = await getInitialData()
-
   return (
     <TicketDashboard
       initialTickets={tickets.data ?? []}
