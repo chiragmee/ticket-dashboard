@@ -27,25 +27,11 @@ export async function middleware(request: NextRequest) {
 
   const { pathname } = request.nextUrl
 
-  // Public routes — always accessible
-  const isPublic = pathname.startsWith('/login') ||
-    pathname.startsWith('/set-password') ||
-    pathname.startsWith('/auth/callback') ||
-    pathname.startsWith('/csat') ||
-    pathname.startsWith('/api/csat') ||
-    pathname.startsWith('/api/webhooks') ||
-    pathname.startsWith('/api/sync') ||
-    pathname.startsWith('/api/tickets') ||
-    pathname.startsWith('/api/sla') ||
-    pathname.startsWith('/_next') ||
-    pathname === '/'
+  // Only admin routes require login
+  const isAdminOnly = pathname.startsWith('/admin') || pathname.startsWith('/set-password')
 
-  if (!user && !isPublic) {
+  if (!user && isAdminOnly) {
     return NextResponse.redirect(new URL('/login', request.url))
-  }
-
-  if (user && pathname === '/login') {
-    return NextResponse.redirect(new URL('/dashboard', request.url))
   }
 
   return supabaseResponse
