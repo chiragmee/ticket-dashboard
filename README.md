@@ -1,6 +1,8 @@
 # TicketView
 
-A purpose-built Zendesk ticket management dashboard with AI-powered classification, SLA tracking, real-time updates, and reporting — built on top of Next.js and Supabase.
+> A purpose-built Zendesk ticket management dashboard with AI-powered classification, SLA tracking, real-time updates, and reporting.
+
+**Live:** [ticket-dashboard-teal.vercel.app](https://ticket-dashboard-teal.vercel.app)
 
 ---
 
@@ -62,7 +64,7 @@ TicketView sits in front of Zendesk and solves all of these.
 
 | | |
 |---|---|
-| Framework | Next.js 16 (App Router) |
+| Framework | Next.js 14 (App Router) |
 | UI | React 19, Tailwind CSS v4 |
 | Database | Supabase (PostgreSQL + Realtime) |
 | Auth | Supabase Auth |
@@ -106,7 +108,7 @@ Zendesk
 ### 1. Clone and install
 
 ```bash
-git clone https://github.com/your-username/ticket-dashboard.git
+git clone https://github.com/Chiragmee/ticket-dashboard.git
 cd ticket-dashboard
 npm install
 ```
@@ -239,3 +241,9 @@ src/
 ## License
 
 MIT
+
+---
+
+## Author
+
+Chirag Mewara · Product Manager · [chirag-mewara-portfolio.vercel.app](https://chirag-mewara-portfolio.vercel.app)
