@@ -5,6 +5,14 @@ import { usePathname } from 'next/navigation'
 
 type UserProfile = { role: string; full_name: string }
 
+const NAV_ITEMS = [
+  { label: 'Dashboard', href: '/dashboard' },
+  { label: 'Reports', href: '/dashboard/reports' },
+  { label: 'SLA Config', href: '/dashboard/sla' },
+  { label: 'Sync', href: '/dashboard/sync' },
+  { label: 'Manage Users', href: '/admin/users' },
+]
+
 export default function DashboardShell({ children }: { children: React.ReactNode }) {
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null)
   const pathname = usePathname()
@@ -12,21 +20,11 @@ export default function DashboardShell({ children }: { children: React.ReactNode
   useEffect(() => {
     fetch('/api/auth/profile').then(r => r.json()).then(json => {
       if (json.profile) setUserProfile(json.profile)
-    })
+    }).catch(() => {})
   }, [])
 
   const isActive = (href: string) =>
     href === '/dashboard' ? pathname === '/dashboard' : pathname.startsWith(href)
-
-  const navItems = [
-    { label: 'Dashboard', href: '/dashboard' },
-    { label: 'Reports', href: '/dashboard/reports' },
-    ...(userProfile?.role === 'admin' ? [
-      { label: 'SLA Config', href: '/dashboard/sla' },
-      { label: 'Sync', href: '/dashboard/sync' },
-      { label: 'Manage Users', href: '/admin/users' },
-    ] : []),
-  ]
 
   return (
     <div className="flex h-screen bg-[#F4F6FB]">
@@ -45,7 +43,7 @@ export default function DashboardShell({ children }: { children: React.ReactNode
         </div>
 
         <nav className="p-3 space-y-0.5 flex-1">
-          {navItems.map((item) => (
+          {NAV_ITEMS.map((item) => (
             <a
               key={item.label}
               href={item.href}
@@ -67,18 +65,6 @@ export default function DashboardShell({ children }: { children: React.ReactNode
               <div className="text-white/40 text-xs capitalize mt-0.5">{userProfile.role}</div>
             </div>
           )}
-          <button
-            onClick={async () => {
-              await fetch('/api/auth/logout', { method: 'POST' })
-              window.location.href = '/login'
-            }}
-            className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-sm text-white/50 hover:text-white hover:bg-white/10 transition-all duration-150"
-          >
-            <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
-              <path d="M10 3h3a1 1 0 0 1 1 1v8a1 1 0 0 1-1 1h-3M7 11l3-3-3-3M10 8H2" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-            </svg>
-            Sign out
-          </button>
         </div>
       </aside>
 
