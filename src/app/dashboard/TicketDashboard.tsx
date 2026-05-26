@@ -379,11 +379,9 @@ export default function TicketDashboard({
           {[
             { label: 'Dashboard', href: '/dashboard', active: true },
             { label: 'Reports', href: '/dashboard/reports', active: false },
-            ...(userProfile?.role === 'admin' ? [
-              { label: 'SLA Config', href: '/dashboard/sla', active: false },
-              { label: 'Sync', href: '/dashboard/sync', active: false },
-              { label: 'Manage Users', href: '/admin/users', active: false },
-            ] : []),
+            { label: 'SLA Config', href: '/dashboard/sla', active: false },
+            { label: 'Sync', href: '/dashboard/sync', active: false },
+            { label: 'Manage Users', href: '/admin/users', active: false },
           ].map((item) => (
             <a
               key={item.label}
@@ -401,21 +399,11 @@ export default function TicketDashboard({
 
         <div className="p-3 border-t border-white/10">
           {userProfile && (
-            <div className="px-3 py-2 mb-1">
+            <div className="px-3 py-2">
               <div className="text-white text-sm font-semibold truncate">{userProfile.full_name}</div>
               <div className="text-white/40 text-xs capitalize mt-0.5">{userProfile.role}</div>
             </div>
           )}
-          <button
-            onClick={async () => {
-              await fetch('/api/auth/logout', { method: 'POST' })
-              window.location.href = '/login'
-            }}
-            className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-sm text-white/50 hover:text-white hover:bg-white/8 transition-all duration-150"
-          >
-            <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M10 3h3a1 1 0 0 1 1 1v8a1 1 0 0 1-1 1h-3M7 11l3-3-3-3M10 8H2" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
-            Sign out
-          </button>
         </div>
       </aside>
 
@@ -662,21 +650,7 @@ export default function TicketDashboard({
                         className="hover:bg-[#F8F9FC] transition-colors duration-100 group"
                       >
                         <td className="px-4 py-3.5 font-mono">
-                          {userProfile?.role === 'admin' || userProfile?.role === 'member' ? (
-                            <a
-                              href={`https://${process.env.NEXT_PUBLIC_ZENDESK_SUBDOMAIN}.zendesk.com/agent/tickets/${t.zendesk_id}`}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="inline-flex items-center gap-1 text-[#3B6EF0] hover:text-[#2a5cd4] font-medium text-xs transition-colors"
-                            >
-                              #{t.zendesk_id}
-                              <svg width="9" height="9" viewBox="0 0 10 10" fill="none" className="opacity-50 group-hover:opacity-100 transition-opacity">
-                                <path d="M1.5 8.5L8.5 1.5M8.5 1.5H3.5M8.5 1.5V6.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-                              </svg>
-                            </a>
-                          ) : (
-                            <span className="text-[#9BAABB] text-xs">#{t.zendesk_id}</span>
-                          )}
+                          <span className="text-[#3B6EF0] font-medium text-xs">#{t.zendesk_id}</span>
                         </td>
 
                         <td className="px-4 py-3.5 max-w-[220px]">
